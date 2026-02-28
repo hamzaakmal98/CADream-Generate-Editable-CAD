@@ -115,3 +115,74 @@ export type ProjectSession = {
     };
   };
 };
+
+export type ProjectSessionV1 = ProjectSession;
+
+export type SitePlanSessionState = {
+  source_dxf_filename: string | null;
+  entities: {
+    bess: BessPlacement[];
+    poi: PointOfInterconnection | null;
+    cable_paths: CablePath[];
+  };
+  tool_settings: {
+    tool_mode: ToolMode;
+    bess_size_factor: number;
+    hidden_layers: Record<string, boolean>;
+    viewport: {
+      scale: number;
+      pos: { x: number; y: number };
+    };
+  };
+};
+
+export type SldToolMode = "select" | "pan" | "connect";
+
+export type SldTerminal = {
+  id: string;
+  x: number;
+  y: number;
+  role: "line" | "in" | "out";
+};
+
+export type SldNode = {
+  id: string;
+  symbol_type: string;
+  label: string;
+  x: number;
+  y: number;
+  rotation_deg: number;
+  terminals: SldTerminal[];
+  metadata?: Record<string, unknown>;
+};
+
+export type SldEdge = {
+  id: string;
+  from_node_id: string;
+  from_terminal_id: string;
+  to_node_id: string;
+  to_terminal_id: string;
+  points: number[][];
+  metadata?: Record<string, unknown>;
+};
+
+export type SldSessionState = {
+  schema_version: "sld-v1";
+  nodes: SldNode[];
+  edges: SldEdge[];
+  tool_settings: {
+    tool_mode: SldToolMode;
+    viewport: {
+      scale: number;
+      pos: { x: number; y: number };
+    };
+  };
+};
+
+export type ProjectSessionV2 = {
+  schema_version: "cadream-project-v2";
+  interfaces: {
+    interactive_site_plan: SitePlanSessionState;
+    single_line_diagram_builder: SldSessionState;
+  };
+};

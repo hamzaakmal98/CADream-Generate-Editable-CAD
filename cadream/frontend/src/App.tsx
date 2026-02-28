@@ -7,7 +7,6 @@ import { useBessEditing } from "./hooks/useBessEditing";
 import { useCableRouting } from "./hooks/useCableRouting";
 import type {
   PointOfInterconnection,
-  ProjectSession,
   RenderDoc,
   SitePlacementExport,
   ToolMode,
@@ -18,15 +17,27 @@ import {
   estimateStructureBounds,
 } from "./utils/cadGeometry";
 import {
-  isToolMode,
-  normalizeBessPlacements,
-  normalizeCablePaths,
-  normalizePoi,
+  createProjectSessionV2,
+  loadSitePlanFromAnyProjectSession,
   pickSuggestedBessBlockName,
 } from "./utils/projectSession";
 
+type InterfaceTab = "interactive-site-plan" | "single-line-diagram-builder";
+
+const TAB_BAR_HEIGHT = 44;
+const TAB_BUTTON_STYLE = {
+  padding: "8px 12px",
+  borderRadius: 6,
+  border: "1px solid #ddd",
+  background: "#fff",
+  cursor: "pointer",
+  fontSize: 13,
+  fontWeight: 600,
+} as const;
+
 export default function App() {
   const stageRef = useRef<Konva.Stage | null>(null);
+  const [activeInterface, setActiveInterface] = useState<InterfaceTab>("interactive-site-plan");
   const [doc, setDoc] = useState<RenderDoc | null>(null);
   const [hiddenLayers, setHiddenLayers] = useState<Record<string, boolean>>({});
   const [scale, setScale] = useState(1);
@@ -38,12 +49,12 @@ export default function App() {
 
   const [stageSize, setStageSize] = useState({
     w: window.innerWidth - SIDEBAR_WIDTH,
-    h: window.innerHeight,
+    h: window.innerHeight - TAB_BAR_HEIGHT,
   });
 
   useEffect(() => {
     const onResize = () =>
-      setStageSize({ w: window.innerWidth - SIDEBAR_WIDTH, h: window.innerHeight });
+      setStageSize({ w: window.innerWidth - SIDEBAR_WIDTH, h: window.innerHeight - TAB_BAR_HEIGHT });
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -139,24 +150,17 @@ export default function App() {
   }
 
   function onSaveProject() {
-    const session: ProjectSession = {
-      schema_version: "cadream-project-v1",
-      source_dxf_filename: sourceDxfName,
-      entities: {
-        bess: bessPlacements,
-        poi,
-        cable_paths: cablePaths,
-      },
-      tool_settings: {
-        tool_mode: toolMode,
-        bess_size_factor: bessSizeFactor,
-        hidden_layers: hiddenLayers,
-        viewport: {
-          scale,
-          pos,
-        },
-      },
-    };
+    const session = createProjectSessionV2({
+      sourceDxfName,
+      bessPlacements,
+      poi,
+      cablePaths,
+      toolMode,
+      bessSizeFactor,
+      hiddenLayers,
+      scale,
+      pos,
+    });
 
     const blob = new Blob([JSON.stringify(session, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -173,54 +177,27 @@ export default function App() {
   async function onLoadProject(file: File) {
     try {
       const raw = await file.text();
-      const parsed = JSON.parse(raw) as Partial<ProjectSession>;
+      const parsed = JSON.parse(raw) as unknown;
 
-      if (parsed?.schema_version !== "cadream-project-v1") {
+      const loaded = loadSitePlanFromAnyProjectSession(parsed, {
+        scale,
+        pos,
+      });
+
+      if (!loaded) {
         window.alert("Unsupported project file format.");
         return;
       }
 
-      const nextBess = normalizeBessPlacements(parsed.entities?.bess);
-      const nextPoi = normalizePoi(parsed.entities?.poi);
-      const nextCables = normalizeCablePaths(parsed.entities?.cable_paths);
-
-      const nextToolMode = isToolMode(parsed.tool_settings?.tool_mode)
-        ? parsed.tool_settings.tool_mode
-        : "pan";
-      const nextBessSize =
-        typeof parsed.tool_settings?.bess_size_factor === "number"
-          ? parsed.tool_settings.bess_size_factor
-          : 1;
-
-      const nextHiddenLayers =
-        parsed.tool_settings?.hidden_layers && typeof parsed.tool_settings.hidden_layers === "object"
-          ? parsed.tool_settings.hidden_layers
-          : {};
-
-      const nextScale =
-        typeof parsed.tool_settings?.viewport?.scale === "number"
-          ? parsed.tool_settings.viewport.scale
-          : scale;
-
-      const nextPos =
-        typeof parsed.tool_settings?.viewport?.pos?.x === "number" &&
-        typeof parsed.tool_settings?.viewport?.pos?.y === "number"
-          ? parsed.tool_settings.viewport.pos
-          : pos;
-
-      setSourceDxfName(
-        typeof parsed.source_dxf_filename === "string" || parsed.source_dxf_filename === null
-          ? parsed.source_dxf_filename
-          : null
-      );
-      loadBessPlacements(nextBess);
-      loadCablePaths(nextCables);
-      setPoi(nextPoi);
-      setToolMode(nextToolMode);
-      setBessSizeFactor(nextBessSize);
-      setHiddenLayers(nextHiddenLayers);
-      setScale(nextScale);
-      setPos(nextPos);
+      setSourceDxfName(loaded.sourceDxfName);
+      loadBessPlacements(loaded.bessPlacements);
+      loadCablePaths(loaded.cablePaths);
+      setPoi(loaded.poi);
+      setToolMode(loaded.toolMode);
+      setBessSizeFactor(loaded.bessSizeFactor);
+      setHiddenLayers(loaded.hiddenLayers);
+      setScale(loaded.scale);
+      setPos(loaded.pos);
       setSelectedBessId(null);
       setSelectedCableId(null);
     } catch {
@@ -390,79 +367,134 @@ export default function App() {
   }
 
   return (
-    <div style={{ display: "flex", height: "100vh", fontFamily: "system-ui" }}>
-      <ControlPanel
-        doc={doc}
-        hiddenLayers={hiddenLayers}
-        toolMode={toolMode}
-        selectedBessId={selectedBessId}
-        bessPlacements={bessPlacements}
-        selectedCableId={selectedCableId}
-        cablePaths={cablePaths}
-        draftCablePoints={draftCablePoints}
-        hasPoi={poi !== null}
-        bessSizeFactor={bessSizeFactor}
-        onUpload={onUpload}
-        onFitToDrawing={() => {
-          if (!doc) return;
-          const fitBounds = getBestFitBounds(doc);
-          if (fitBounds) fitToBounds(fitBounds);
-        }}
-        onToggleLayer={toggleLayer}
-        onSetToolMode={setToolMode}
-        onDeleteSelectedBess={deleteSelectedBess}
-        onClearBess={clearBess}
-        onFinishCable={finishCableDraft}
-        onCancelCableDraft={cancelCableDraft}
-        onDeleteSelectedCable={deleteSelectedCable}
-        onClearCables={clearCables}
-        onClearPoi={() => setPoi(null)}
-        onSetBessSizeFactor={setBessSizeFactor}
-        onSaveProject={onSaveProject}
-        onLoadProject={onLoadProject}
-      />
-
+    <div style={{ height: "100vh", fontFamily: "system-ui", display: "flex", flexDirection: "column" }}>
       <div
         style={{
-          position: "absolute",
-          right: 10,
-          top: 10,
-          background: "white",
-          padding: 6,
-          border: "1px solid #ddd",
-          fontSize: 12,
+          height: TAB_BAR_HEIGHT,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "0 10px",
+          borderBottom: "1px solid #ddd",
+          background: "#f8f8f8",
         }}
       >
-        {doc
-          ? `Entities: ${doc.entities.length} | BESS: ${bessPlacements.length} | POI: ${poi ? "set" : "none"} | Cables: ${cablePaths.length}`
-          : "No DXF loaded"}
+        <button
+          style={{
+            ...TAB_BUTTON_STYLE,
+            background: activeInterface === "interactive-site-plan" ? "#fff" : "#f0f0f0",
+            borderColor: activeInterface === "interactive-site-plan" ? "#888" : "#ddd",
+          }}
+          onClick={() => setActiveInterface("interactive-site-plan")}
+        >
+          Interactive Site Plan
+        </button>
+
+        <button
+          style={{
+            ...TAB_BUTTON_STYLE,
+            background: activeInterface === "single-line-diagram-builder" ? "#fff" : "#f0f0f0",
+            borderColor: activeInterface === "single-line-diagram-builder" ? "#888" : "#ddd",
+          }}
+          onClick={() => setActiveInterface("single-line-diagram-builder")}
+        >
+          Single-Line Diagram Builder
+        </button>
       </div>
 
-      <CadCanvas
-        stageRef={stageRef}
-        stageSize={stageSize}
-        pos={pos}
-        scale={scale}
-        toolMode={toolMode}
-        visibleEntities={visibleEntities}
-        hiddenLayers={hiddenLayers}
-        doc={doc}
-        bessPlacements={bessPlacements}
-        cablePaths={cablePaths}
-        draftCablePoints={draftCablePoints}
-        poi={poi}
-        selectedCableId={selectedCableId}
-        selectedBessId={selectedBessId}
-        bessMarkerSize={bessMarkerSize}
-        poiMarkerSize={poiMarkerSize}
-        onWheel={onWheel}
-        onStageMouseDown={onStageMouseDown}
-        onStageDragEnd={onStageDragEnd}
-        onSetSelectedBessId={setSelectedBessId}
-        onSetSelectedCableId={setSelectedCableId}
-        onUpdateSelectedCableStart={updateSelectedCableStart}
-        onSetBessPlacements={setBessPlacements}
-      />
+      <div style={{ flex: 1, position: "relative" }}>
+        {activeInterface === "interactive-site-plan" ? (
+          <div style={{ display: "flex", height: "100%" }}>
+            <ControlPanel
+              doc={doc}
+              hiddenLayers={hiddenLayers}
+              toolMode={toolMode}
+              selectedBessId={selectedBessId}
+              bessPlacements={bessPlacements}
+              selectedCableId={selectedCableId}
+              cablePaths={cablePaths}
+              draftCablePoints={draftCablePoints}
+              hasPoi={poi !== null}
+              bessSizeFactor={bessSizeFactor}
+              onUpload={onUpload}
+              onFitToDrawing={() => {
+                if (!doc) return;
+                const fitBounds = getBestFitBounds(doc);
+                if (fitBounds) fitToBounds(fitBounds);
+              }}
+              onToggleLayer={toggleLayer}
+              onSetToolMode={setToolMode}
+              onDeleteSelectedBess={deleteSelectedBess}
+              onClearBess={clearBess}
+              onFinishCable={finishCableDraft}
+              onCancelCableDraft={cancelCableDraft}
+              onDeleteSelectedCable={deleteSelectedCable}
+              onClearCables={clearCables}
+              onClearPoi={() => setPoi(null)}
+              onSetBessSizeFactor={setBessSizeFactor}
+              onSaveProject={onSaveProject}
+              onLoadProject={onLoadProject}
+            />
+
+            <div
+              style={{
+                position: "absolute",
+                right: 10,
+                top: 10,
+                background: "white",
+                padding: 6,
+                border: "1px solid #ddd",
+                fontSize: 12,
+              }}
+            >
+              {doc
+                ? `Entities: ${doc.entities.length} | BESS: ${bessPlacements.length} | POI: ${poi ? "set" : "none"} | Cables: ${cablePaths.length}`
+                : "No DXF loaded"}
+            </div>
+
+            <CadCanvas
+              stageRef={stageRef}
+              stageSize={stageSize}
+              pos={pos}
+              scale={scale}
+              toolMode={toolMode}
+              visibleEntities={visibleEntities}
+              hiddenLayers={hiddenLayers}
+              doc={doc}
+              bessPlacements={bessPlacements}
+              cablePaths={cablePaths}
+              draftCablePoints={draftCablePoints}
+              poi={poi}
+              selectedCableId={selectedCableId}
+              selectedBessId={selectedBessId}
+              bessMarkerSize={bessMarkerSize}
+              poiMarkerSize={poiMarkerSize}
+              onWheel={onWheel}
+              onStageMouseDown={onStageMouseDown}
+              onStageDragEnd={onStageDragEnd}
+              onSetSelectedBessId={setSelectedBessId}
+              onSetSelectedCableId={setSelectedCableId}
+              onUpdateSelectedCableStart={updateSelectedCableStart}
+              onSetBessPlacements={setBessPlacements}
+            />
+          </div>
+        ) : (
+          <div
+            style={{
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "#fff",
+              color: "#444",
+              fontSize: 16,
+              fontWeight: 500,
+            }}
+          >
+            Single-Line Diagram Builder interface coming next.
+          </div>
+        )}
+      </div>
     </div>
   );
 }
