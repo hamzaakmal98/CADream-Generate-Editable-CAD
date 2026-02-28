@@ -77,6 +77,27 @@ export default function CadCanvas({
   onUpdateSelectedCableStart,
   onSetBessPlacements,
 }: CadCanvasProps) {
+  const staticLineProps = { listening: false, perfectDrawEnabled: false } as const;
+  const safeScale = Math.max(scale, 0.0001);
+
+  function toCanvasPoints(points: number[][]) {
+    return points.flatMap((point) => [point[0], -point[1]]);
+  }
+
+  function circlePolylinePoints(center: number[], radius: number, segments: number) {
+    return toCanvasPoints(arcPoints(center[0], center[1], radius, 0, 360, segments));
+  }
+
+  function arcPolylinePoints(
+    center: number[],
+    radius: number,
+    startAngle: number,
+    endAngle: number,
+    segments: number
+  ) {
+    return toCanvasPoints(arcPoints(center[0], center[1], radius, startAngle, endAngle, segments));
+  }
+
   const selectedCable = cablePaths.find((c) => c.id === selectedCableId) ?? null;
   const viewportWorld = useMemo(
     () => getViewportWorldBounds(stageSize, pos, scale),
@@ -124,8 +145,8 @@ export default function CadCanvas({
     if (!boundsIntersect(worldBounds, viewportWorld)) return false;
 
     if (isHeavyScene) {
-      const wPx = Math.abs(worldBounds.maxX - worldBounds.minX) * Math.max(Math.abs(scale), 0.0001);
-      const hPx = Math.abs(worldBounds.maxY - worldBounds.minY) * Math.max(Math.abs(scale), 0.0001);
+      const wPx = Math.abs(worldBounds.maxX - worldBounds.minX) * safeScale;
+      const hPx = Math.abs(worldBounds.maxY - worldBounds.minY) * safeScale;
       if (Math.max(wPx, hPx) < 0.7) return false;
     }
 
@@ -187,8 +208,7 @@ export default function CadCanvas({
                 points={[p1[0], -p1[1], p2[0], -p2[1]]}
                 stroke="black"
                 strokeWidth={1 / scale}
-                listening={false}
-                perfectDrawEnabled={false}
+                {...staticLineProps}
               />
             );
           }
@@ -206,8 +226,7 @@ export default function CadCanvas({
                 stroke="black"
                 strokeWidth={1 / scale}
                 closed={bEnt.closed}
-                listening={false}
-                perfectDrawEnabled={false}
+                {...staticLineProps}
               />
             );
           }
@@ -221,7 +240,7 @@ export default function CadCanvas({
             );
             const circlePts = arcPoints(bEnt.center[0], bEnt.center[1], bEnt.r, 0, 360, segs)
               .map((p) => transformPoint(p[0], p[1], xform))
-              .flatMap((p) => [p[0], -p[1]]);
+              .flatMap((point) => [point[0], -point[1]]);
 
             return (
               <Line
@@ -230,8 +249,7 @@ export default function CadCanvas({
                 stroke="red"
                 strokeWidth={1 / scale}
                 closed
-                listening={false}
-                perfectDrawEnabled={false}
+                {...staticLineProps}
               />
             );
           }
@@ -254,7 +272,7 @@ export default function CadCanvas({
               segs
             )
               .map((p) => transformPoint(p[0], p[1], xform))
-              .flatMap((p) => [p[0], -p[1]]);
+              .flatMap((point) => [point[0], -point[1]]);
 
             return (
               <Line
@@ -262,8 +280,7 @@ export default function CadCanvas({
                 points={arcPts}
                 stroke="black"
                 strokeWidth={1 / scale}
-                listening={false}
-                perfectDrawEnabled={false}
+                {...staticLineProps}
               />
             );
           }
@@ -331,7 +348,7 @@ export default function CadCanvas({
               );
             }
             if (ent.type === "LWPOLYLINE") {
-              const pts = ent.points.flatMap((p) => [p[0], -p[1]]);
+              const pts = toCanvasPoints(ent.points);
               if (ent.closed) pts.push(ent.points[0][0], -ent.points[0][1]);
               return (
                 <Line
@@ -340,8 +357,7 @@ export default function CadCanvas({
                   stroke="black"
                   strokeWidth={1}
                   closed={ent.closed}
-                  listening={false}
-                  perfectDrawEnabled={false}
+                  {...staticLineProps}
                 />
               );
             }
@@ -352,9 +368,7 @@ export default function CadCanvas({
                 arcPixelsPerSegment,
                 arcMaxSegments
               );
-              const circlePts = arcPoints(ent.center[0], ent.center[1], ent.r, 0, 360, segs).flatMap(
-                (p) => [p[0], -p[1]]
-              );
+              const circlePts = circlePolylinePoints(ent.center, ent.r, segs);
               return (
                 <Line
                   key={idx}
@@ -362,8 +376,7 @@ export default function CadCanvas({
                   stroke="red"
                   strokeWidth={1}
                   closed
-                  listening={false}
-                  perfectDrawEnabled={false}
+                  {...staticLineProps}
                 />
               );
             }
@@ -376,22 +389,20 @@ export default function CadCanvas({
                 arcPixelsPerSegment,
                 arcMaxSegments
               );
-              const arcPts = arcPoints(
-                ent.center[0],
-                ent.center[1],
+              const arcPts = arcPolylinePoints(
+                ent.center,
                 ent.r,
                 ent.start_angle,
                 ent.end_angle,
                 segs
-              ).flatMap((p) => [p[0], -p[1]]);
+              );
               return (
                 <Line
                   key={idx}
                   points={arcPts}
                   stroke="black"
                   strokeWidth={1}
-                  listening={false}
-                  perfectDrawEnabled={false}
+                  {...staticLineProps}
                 />
               );
             }
@@ -416,7 +427,7 @@ export default function CadCanvas({
 
         <Layer>
           {cablePaths.map((cable) => {
-            const pts = cable.points.flatMap((p) => [p[0], -p[1]]);
+            const pts = toCanvasPoints(cable.points);
             const selected = cable.id === selectedCableId;
 
             return (
@@ -437,7 +448,7 @@ export default function CadCanvas({
 
           {draftCablePoints.length > 0 && (
             <Line
-              points={draftCablePoints.flatMap((p) => [p[0], -p[1]])}
+              points={toCanvasPoints(draftCablePoints)}
               stroke="#fb923c"
               strokeWidth={Math.max(2, 3 / scale)}
               dash={[30 / scale, 20 / scale]}
@@ -555,9 +566,9 @@ export default function CadCanvas({
                     <Circle
                       x={0}
                       y={0}
-                      radius={Math.max(8 / Math.max(scale, 0.0001), size * 0.12)}
+                      radius={Math.max(8 / safeScale, size * 0.12)}
                       stroke={selected ? "#0057ff" : "#0b8f00"}
-                      strokeWidth={Math.max(2 / Math.max(scale, 0.0001), 1)}
+                      strokeWidth={Math.max(2 / safeScale, 1)}
                       fill={selected ? "rgba(0, 87, 255, 0.35)" : "rgba(11, 143, 0, 0.28)"}
                     />
                   )}
