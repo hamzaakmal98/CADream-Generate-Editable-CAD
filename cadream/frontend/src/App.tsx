@@ -48,6 +48,17 @@ export default function App() {
     return doc.entities.filter((e) => !hiddenLayers[e.layer]);
   }, [doc, hiddenLayers]);
 
+  const suggestedBessBlockName = useMemo(() => {
+    const blockNames = Object.keys(doc?.blocks ?? {});
+    if (blockNames.length === 0) return null;
+
+    const byKeyword = blockNames.find((name) => /bess|battery|enclosure|container/i.test(name));
+    if (byKeyword) return byKeyword;
+
+    const nonAnonymous = blockNames.find((name) => !name.startsWith("*"));
+    return nonAnonymous ?? blockNames[0] ?? null;
+  }, [doc?.blocks]);
+
   const bessMarkerSize = useMemo(
     () => computeBessMarkerSize(doc?.bounds ?? null, bessSizeFactor),
     [doc, bessSizeFactor]
@@ -99,6 +110,12 @@ export default function App() {
             x: item.x,
             y: item.y,
           },
+          cad_insert: {
+            block_name: item.block_name,
+            rotation: item.rotation,
+            xscale: item.xscale,
+            yscale: item.yscale,
+          },
         })),
         poi,
         cable_paths: cablePaths,
@@ -147,6 +164,10 @@ export default function App() {
           label,
           x: next.x,
           y: next.y,
+          block_name: typeof next.block_name === "string" ? next.block_name : null,
+          rotation: typeof next.rotation === "number" ? next.rotation : 0,
+          xscale: typeof next.xscale === "number" ? next.xscale : 1,
+          yscale: typeof next.yscale === "number" ? next.yscale : 1,
         };
       })
       .filter((item): item is BessPlacement => item !== null);
@@ -344,7 +365,12 @@ export default function App() {
       const world = pointerToWorld();
       if (!world) return;
 
-      addBessAt(world.x, world.y);
+      addBessAt(world.x, world.y, {
+        block_name: suggestedBessBlockName,
+        rotation: 0,
+        xscale: 1,
+        yscale: 1,
+      });
       setSelectedCableId(null);
       return;
     }
