@@ -2,6 +2,22 @@ import { useRef } from "react";
 import type { BessPlacement, CablePath, RenderDoc, ToolMode } from "../types/cad";
 import { SIDEBAR_WIDTH } from "../constants/ui";
 
+const BUTTON_STYLE = { padding: "6px 10px" };
+
+const TOOL_BUTTONS: Array<{ mode: ToolMode; label: string; requiresDoc: boolean }> = [
+  { mode: "pan", label: "Pan", requiresDoc: false },
+  { mode: "place-bess", label: "Place BESS", requiresDoc: true },
+  { mode: "draw-cable", label: "Draw Cable", requiresDoc: true },
+  { mode: "place-poi", label: "Place POI", requiresDoc: true },
+];
+
+const TOOL_HINTS: Record<ToolMode, string> = {
+  "place-bess": "Click on site plan to place BESS.",
+  "place-poi": "Click on site plan to place or move POI.",
+  "draw-cable": "Click to add cable vertices, then finish cable.",
+  pan: "Pan mode: drag canvas to navigate.",
+};
+
 type ControlPanelProps = {
   doc: RenderDoc | null;
   hiddenLayers: Record<string, boolean>;
@@ -78,7 +94,7 @@ export default function ControlPanel({
       />
 
       <button
-        style={{ marginTop: 8, padding: "6px 10px" }}
+        style={{ ...BUTTON_STYLE, marginTop: 8 }}
         disabled={!doc?.bounds}
         onClick={onFitToDrawing}
       >
@@ -86,11 +102,11 @@ export default function ControlPanel({
       </button>
 
       <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-        <button style={{ padding: "6px 10px" }} onClick={onSaveProject}>
+        <button style={BUTTON_STYLE} onClick={onSaveProject}>
           Save Project
         </button>
         <button
-          style={{ padding: "6px 10px" }}
+          style={BUTTON_STYLE}
           onClick={() => loadProjectInputRef.current?.click()}
         >
           Load Project
@@ -114,69 +130,38 @@ export default function ControlPanel({
       <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Site Editing</div>
 
       <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-        <button
-          style={{ padding: "6px 10px", background: toolMode === "pan" ? "#eee" : "white" }}
-          onClick={() => onSetToolMode("pan")}
-        >
-          Pan
-        </button>
-        <button
-          style={{
-            padding: "6px 10px",
-            background: toolMode === "place-bess" ? "#eee" : "white",
-          }}
-          disabled={!doc}
-          onClick={() => onSetToolMode("place-bess")}
-        >
-          Place BESS
-        </button>
-        <button
-          style={{
-            padding: "6px 10px",
-            background: toolMode === "draw-cable" ? "#eee" : "white",
-          }}
-          disabled={!doc}
-          onClick={() => onSetToolMode("draw-cable")}
-        >
-          Draw Cable
-        </button>
-        <button
-          style={{
-            padding: "6px 10px",
-            background: toolMode === "place-poi" ? "#eee" : "white",
-          }}
-          disabled={!doc}
-          onClick={() => onSetToolMode("place-poi")}
-        >
-          Place POI
-        </button>
+        {TOOL_BUTTONS.map((tool) => (
+          <button
+            key={tool.mode}
+            style={{ ...BUTTON_STYLE, background: toolMode === tool.mode ? "#eee" : "white" }}
+            disabled={tool.requiresDoc && !doc}
+            onClick={() => onSetToolMode(tool.mode)}
+          >
+            {tool.label}
+          </button>
+        ))}
       </div>
 
       <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
         <button
-          style={{ padding: "6px 10px" }}
+          style={BUTTON_STYLE}
           disabled={selectedBessId === null}
           onClick={onDeleteSelectedBess}
         >
           Delete Selected
         </button>
-        <button style={{ padding: "6px 10px" }} disabled={bessPlacements.length === 0} onClick={onClearBess}>
+        <button style={BUTTON_STYLE} disabled={bessPlacements.length === 0} onClick={onClearBess}>
           Clear BESS
         </button>
       </div>
 
-      <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>
-        {toolMode === "place-bess" && "Click on site plan to place BESS."}
-        {toolMode === "place-poi" && "Click on site plan to place or move POI."}
-        {toolMode === "draw-cable" && "Click to add cable vertices, then finish cable."}
-        {toolMode === "pan" && "Pan mode: drag canvas to navigate."}
-      </div>
+      <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>{TOOL_HINTS[toolMode]}</div>
 
       <div style={{ fontSize: 12, color: "#666" }}>Placed BESS: {bessPlacements.length}</div>
       <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>POI: {hasPoi ? "set" : "not set"}</div>
 
       <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-        <button style={{ padding: "6px 10px" }} disabled={!hasPoi} onClick={onClearPoi}>
+        <button style={BUTTON_STYLE} disabled={!hasPoi} onClick={onClearPoi}>
           Clear POI
         </button>
       </div>
@@ -187,14 +172,14 @@ export default function ControlPanel({
 
       <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
         <button
-          style={{ padding: "6px 10px" }}
+          style={BUTTON_STYLE}
           disabled={draftCablePoints.length < 2 || !hasPoi}
           onClick={onFinishCable}
         >
           Finish Cable
         </button>
         <button
-          style={{ padding: "6px 10px" }}
+          style={BUTTON_STYLE}
           disabled={draftCablePoints.length === 0}
           onClick={onCancelCableDraft}
         >
@@ -204,14 +189,14 @@ export default function ControlPanel({
 
       <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
         <button
-          style={{ padding: "6px 10px" }}
+          style={BUTTON_STYLE}
           disabled={selectedCableId === null}
           onClick={onDeleteSelectedCable}
         >
           Delete Cable
         </button>
         <button
-          style={{ padding: "6px 10px" }}
+          style={BUTTON_STYLE}
           disabled={cablePaths.length === 0}
           onClick={onClearCables}
         >
