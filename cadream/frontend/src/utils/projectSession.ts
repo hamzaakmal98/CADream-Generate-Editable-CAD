@@ -5,7 +5,12 @@ import type {
   ProjectSessionV1,
   ProjectSessionV2,
   RenderDoc,
+  SldEdge,
+  SldNode,
+  SldSessionState,
+  SldToolMode,
   SitePlanSessionState,
+  SldTerminal,
   ToolMode,
 } from "../types/cad";
 
@@ -94,6 +99,11 @@ type SitePlanDefaults = {
   pos: { x: number; y: number };
 };
 
+type SldDefaults = {
+  scale: number;
+  pos: { x: number; y: number };
+};
+
 type SitePlanSnapshotInput = {
   sourceDxfName: string | null;
   bessPlacements: BessPlacement[];
@@ -104,6 +114,7 @@ type SitePlanSnapshotInput = {
   hiddenLayers: Record<string, boolean>;
   scale: number;
   pos: { x: number; y: number };
+  sldSession: SldSessionState;
 };
 
 export type LoadedSitePlanSession = {
@@ -117,6 +128,143 @@ export type LoadedSitePlanSession = {
   scale: number;
   pos: { x: number; y: number };
 };
+
+export type LoadedProjectSession = {
+  sitePlan: LoadedSitePlanSession;
+  sldSession: SldSessionState;
+};
+
+function isSldToolMode(value: unknown): value is SldToolMode {
+  return value === "select" || value === "pan" || value === "connect";
+}
+
+function normalizeSldTerminal(value: unknown): SldTerminal | null {
+  if (!value || typeof value !== "object") return null;
+  const next = value as Partial<SldTerminal>;
+  if (typeof next.id !== "string") return null;
+  if (typeof next.x !== "number" || typeof next.y !== "number") return null;
+  if (next.role !== "line" && next.role !== "in" && next.role !== "out") return null;
+  return {
+    id: next.id,
+    x: next.x,
+    y: next.y,
+    role: next.role,
+  };
+}
+
+function normalizeSldNode(value: unknown): SldNode | null {
+  if (!value || typeof value !== "object") return null;
+  const next = value as Partial<SldNode>;
+  if (typeof next.id !== "string") return null;
+  if (typeof next.symbol_type !== "string" || typeof next.label !== "string") return null;
+  if (typeof next.x !== "number" || typeof next.y !== "number") return null;
+
+  const terminals = Array.isArray(next.terminals)
+    ? next.terminals
+        .map((terminal) => normalizeSldTerminal(terminal))
+        .filter((terminal): terminal is SldTerminal => terminal !== null)
+    : [];
+
+  return {
+    id: next.id,
+    symbol_type: next.symbol_type,
+    label: next.label,
+    x: next.x,
+    y: next.y,
+    rotation_deg: typeof next.rotation_deg === "number" ? next.rotation_deg : 0,
+    terminals,
+    metadata: next.metadata,
+  };
+}
+
+function normalizeSldEdge(value: unknown): SldEdge | null {
+  if (!value || typeof value !== "object") return null;
+  const next = value as Partial<SldEdge>;
+  if (
+    typeof next.id !== "string" ||
+    typeof next.from_node_id !== "string" ||
+    typeof next.from_terminal_id !== "string" ||
+    typeof next.to_node_id !== "string" ||
+    typeof next.to_terminal_id !== "string"
+  ) {
+    return null;
+  }
+
+  const points = Array.isArray(next.points)
+    ? next.points
+        .map((point) =>
+          Array.isArray(point) && point.length >= 2 && typeof point[0] === "number" && typeof point[1] === "number"
+            ? [point[0], point[1]]
+            : null
+        )
+        .filter((point): point is number[] => point !== null)
+    : [];
+
+  return {
+    id: next.id,
+    from_node_id: next.from_node_id,
+    from_terminal_id: next.from_terminal_id,
+    to_node_id: next.to_node_id,
+    to_terminal_id: next.to_terminal_id,
+    points,
+    metadata: next.metadata,
+  };
+}
+
+export function createEmptySldSession(defaults?: SldDefaults): SldSessionState {
+  return {
+    schema_version: "sld-v1",
+    nodes: [],
+    edges: [],
+    tool_settings: {
+      tool_mode: "select",
+      viewport: {
+        scale: defaults?.scale ?? 1,
+        pos: defaults?.pos ?? { x: 0, y: 0 },
+      },
+    },
+  };
+}
+
+function normalizeSldSession(session: unknown, defaults: SldDefaults): SldSessionState {
+  if (!session || typeof session !== "object") return createEmptySldSession(defaults);
+
+  const next = session as Partial<SldSessionState>;
+
+  const nodes = Array.isArray(next.nodes)
+    ? next.nodes.map((node) => normalizeSldNode(node)).filter((node): node is SldNode => node !== null)
+    : [];
+
+  const edges = Array.isArray(next.edges)
+    ? next.edges.map((edge) => normalizeSldEdge(edge)).filter((edge): edge is SldEdge => edge !== null)
+    : [];
+
+  const toolMode = isSldToolMode(next.tool_settings?.tool_mode) ? next.tool_settings.tool_mode : "select";
+
+  const viewportScale =
+    typeof next.tool_settings?.viewport?.scale === "number"
+      ? next.tool_settings.viewport.scale
+      : defaults.scale;
+
+  const viewportPos =
+    typeof next.tool_settings?.viewport?.pos?.x === "number" &&
+    typeof next.tool_settings?.viewport?.pos?.y === "number"
+      ? next.tool_settings.viewport.pos
+      : defaults.pos;
+
+  return {
+    schema_version: "sld-v1",
+    nodes,
+    edges,
+    tool_settings: {
+      tool_mode: toolMode,
+      viewport: {
+        scale: viewportScale,
+        pos: viewportPos,
+      },
+    },
+  };
+}
 
 function normalizeSitePlanSession(
   sitePlan: Partial<SitePlanSessionState> | undefined,
@@ -191,19 +339,37 @@ export function createProjectSessionV2(input: SitePlanSnapshotInput): ProjectSes
         },
       },
       single_line_diagram_builder: {
-        schema_version: "sld-v1",
-        nodes: [],
-        edges: [],
-        tool_settings: {
-          tool_mode: "select",
-          viewport: {
-            scale: 1,
-            pos: { x: 0, y: 0 },
-          },
-        },
+        ...input.sldSession,
       },
     },
   };
+}
+
+export function loadProjectFromAnySession(raw: unknown, defaults: SitePlanDefaults): LoadedProjectSession | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const parsed = raw as { schema_version?: unknown };
+
+  if (parsed.schema_version === "cadream-project-v2") {
+    const v2 = raw as Partial<ProjectSessionV2>;
+    const sitePlan = normalizeSitePlanSession(v2.interfaces?.interactive_site_plan, defaults);
+    const sldSession = normalizeSldSession(v2.interfaces?.single_line_diagram_builder, {
+      scale: 1,
+      pos: { x: 0, y: 0 },
+    });
+    return { sitePlan, sldSession };
+  }
+
+  if (parsed.schema_version === "cadream-project-v1") {
+    const sitePlan = loadSitePlanFromAnyProjectSession(raw, defaults);
+    if (!sitePlan) return null;
+    return {
+      sitePlan,
+      sldSession: createEmptySldSession({ scale: 1, pos: { x: 0, y: 0 } }),
+    };
+  }
+
+  return null;
 }
 
 export function loadSitePlanFromAnyProjectSession(
