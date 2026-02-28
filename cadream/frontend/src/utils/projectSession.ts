@@ -2,7 +2,10 @@ import type {
   BessPlacement,
   CablePath,
   PointOfInterconnection,
+  ProjectSessionV1,
+  ProjectSessionV2,
   RenderDoc,
+  SitePlanSessionState,
   ToolMode,
 } from "../types/cad";
 
@@ -84,4 +87,163 @@ export function normalizeCablePaths(items: unknown): CablePath[] {
       };
     })
     .filter((item): item is CablePath => item !== null);
+}
+
+type SitePlanDefaults = {
+  scale: number;
+  pos: { x: number; y: number };
+};
+
+type SitePlanSnapshotInput = {
+  sourceDxfName: string | null;
+  bessPlacements: BessPlacement[];
+  poi: PointOfInterconnection | null;
+  cablePaths: CablePath[];
+  toolMode: ToolMode;
+  bessSizeFactor: number;
+  hiddenLayers: Record<string, boolean>;
+  scale: number;
+  pos: { x: number; y: number };
+};
+
+export type LoadedSitePlanSession = {
+  sourceDxfName: string | null;
+  bessPlacements: BessPlacement[];
+  poi: PointOfInterconnection | null;
+  cablePaths: CablePath[];
+  toolMode: ToolMode;
+  bessSizeFactor: number;
+  hiddenLayers: Record<string, boolean>;
+  scale: number;
+  pos: { x: number; y: number };
+};
+
+function normalizeSitePlanSession(
+  sitePlan: Partial<SitePlanSessionState> | undefined,
+  defaults: SitePlanDefaults
+): LoadedSitePlanSession {
+  const nextBess = normalizeBessPlacements(sitePlan?.entities?.bess);
+  const nextPoi = normalizePoi(sitePlan?.entities?.poi);
+  const nextCables = normalizeCablePaths(sitePlan?.entities?.cable_paths);
+
+  const nextToolMode = isToolMode(sitePlan?.tool_settings?.tool_mode)
+    ? sitePlan.tool_settings.tool_mode
+    : "pan";
+
+  const nextBessSize =
+    typeof sitePlan?.tool_settings?.bess_size_factor === "number"
+      ? sitePlan.tool_settings.bess_size_factor
+      : 1;
+
+  const nextHiddenLayers =
+    sitePlan?.tool_settings?.hidden_layers && typeof sitePlan.tool_settings.hidden_layers === "object"
+      ? sitePlan.tool_settings.hidden_layers
+      : {};
+
+  const nextScale =
+    typeof sitePlan?.tool_settings?.viewport?.scale === "number"
+      ? sitePlan.tool_settings.viewport.scale
+      : defaults.scale;
+
+  const nextPos =
+    typeof sitePlan?.tool_settings?.viewport?.pos?.x === "number" &&
+    typeof sitePlan?.tool_settings?.viewport?.pos?.y === "number"
+      ? sitePlan.tool_settings.viewport.pos
+      : defaults.pos;
+
+  const sourceDxfName =
+    typeof sitePlan?.source_dxf_filename === "string" || sitePlan?.source_dxf_filename === null
+      ? sitePlan.source_dxf_filename
+      : null;
+
+  return {
+    sourceDxfName,
+    bessPlacements: nextBess,
+    poi: nextPoi,
+    cablePaths: nextCables,
+    toolMode: nextToolMode,
+    bessSizeFactor: nextBessSize,
+    hiddenLayers: nextHiddenLayers,
+    scale: nextScale,
+    pos: nextPos,
+  };
+}
+
+export function createProjectSessionV2(input: SitePlanSnapshotInput): ProjectSessionV2 {
+  return {
+    schema_version: "cadream-project-v2",
+    interfaces: {
+      interactive_site_plan: {
+        source_dxf_filename: input.sourceDxfName,
+        entities: {
+          bess: input.bessPlacements,
+          poi: input.poi,
+          cable_paths: input.cablePaths,
+        },
+        tool_settings: {
+          tool_mode: input.toolMode,
+          bess_size_factor: input.bessSizeFactor,
+          hidden_layers: input.hiddenLayers,
+          viewport: {
+            scale: input.scale,
+            pos: input.pos,
+          },
+        },
+      },
+      single_line_diagram_builder: {
+        schema_version: "sld-v1",
+        nodes: [],
+        edges: [],
+        tool_settings: {
+          tool_mode: "select",
+          viewport: {
+            scale: 1,
+            pos: { x: 0, y: 0 },
+          },
+        },
+      },
+    },
+  };
+}
+
+export function loadSitePlanFromAnyProjectSession(
+  raw: unknown,
+  defaults: SitePlanDefaults
+): LoadedSitePlanSession | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const parsed = raw as { schema_version?: unknown };
+
+  if (parsed.schema_version === "cadream-project-v2") {
+    const v2 = raw as Partial<ProjectSessionV2>;
+    return normalizeSitePlanSession(v2.interfaces?.interactive_site_plan, defaults);
+  }
+
+  if (parsed.schema_version === "cadream-project-v1") {
+    const v1 = raw as Partial<ProjectSessionV1>;
+    const legacySitePlan: Partial<SitePlanSessionState> = {
+      source_dxf_filename:
+        typeof v1.source_dxf_filename === "string" || v1.source_dxf_filename === null
+          ? v1.source_dxf_filename
+          : null,
+      entities: {
+        bess: v1.entities?.bess ?? [],
+        poi: v1.entities?.poi ?? null,
+        cable_paths: v1.entities?.cable_paths ?? [],
+      },
+      tool_settings: {
+        tool_mode: v1.tool_settings?.tool_mode ?? "pan",
+        bess_size_factor: v1.tool_settings?.bess_size_factor ?? 1,
+        hidden_layers: v1.tool_settings?.hidden_layers ?? {},
+        viewport: {
+          scale: v1.tool_settings?.viewport?.scale ?? defaults.scale,
+          pos: v1.tool_settings?.viewport?.pos ?? defaults.pos,
+        },
+      },
+    };
+
+    return normalizeSitePlanSession(legacySitePlan, defaults);
+  }
+
+  return null;
 }
