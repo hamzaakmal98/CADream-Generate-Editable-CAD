@@ -7,6 +7,7 @@ type UseBessEditingResult = {
   addBessAt: (x: number, y: number) => BessPlacement;
   setSelectedBessId: (id: number | null) => void;
   setBessPlacements: React.Dispatch<React.SetStateAction<BessPlacement[]>>;
+  loadBessPlacements: (items: BessPlacement[]) => void;
   deleteSelectedBess: () => void;
   clearBess: () => void;
 };
@@ -41,6 +42,14 @@ export function useBessEditing(): UseBessEditingResult {
   function clearBess() {
     setBessPlacements([]);
     setSelectedBessId(null);
+    nextBessIdRef.current = 1;
+  }
+
+  function loadBessPlacements(items: BessPlacement[]) {
+    setBessPlacements(items);
+    setSelectedBessId(null);
+    const maxId = items.reduce((max, item) => Math.max(max, item.id), 0);
+    nextBessIdRef.current = maxId + 1;
   }
 
   return {
@@ -49,6 +58,7 @@ export function useBessEditing(): UseBessEditingResult {
     addBessAt,
     setSelectedBessId,
     setBessPlacements,
+    loadBessPlacements,
     deleteSelectedBess,
     clearBess,
   };
