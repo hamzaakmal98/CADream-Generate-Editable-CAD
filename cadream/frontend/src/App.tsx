@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type Konva from "konva";
 import CadCanvas from "./components/CadCanvas";
 import ControlPanel from "./components/ControlPanel";
+import SldBuilder from "./components/sld/SldBuilder";
 import { SIDEBAR_WIDTH } from "./constants/ui";
 import { useBessEditing } from "./hooks/useBessEditing";
 import { useCableRouting } from "./hooks/useCableRouting";
+import { useSldEditor } from "./hooks/useSldEditor";
 import type {
   PointOfInterconnection,
   RenderDoc,
@@ -18,7 +20,7 @@ import {
 } from "./utils/cadGeometry";
 import {
   createProjectSessionV2,
-  loadSitePlanFromAnyProjectSession,
+  loadProjectFromAnySession,
   pickSuggestedBessBlockName,
 } from "./utils/projectSession";
 
@@ -104,6 +106,8 @@ export default function App() {
     scale,
   });
 
+  const sldEditor = useSldEditor();
+
   const sitePlacementPayload = useMemo<SitePlacementExport>(
     () => ({
       schema_version: "v1",
@@ -160,6 +164,7 @@ export default function App() {
       hiddenLayers,
       scale,
       pos,
+      sldSession: sldEditor.session,
     });
 
     const blob = new Blob([JSON.stringify(session, null, 2)], { type: "application/json" });
@@ -179,7 +184,7 @@ export default function App() {
       const raw = await file.text();
       const parsed = JSON.parse(raw) as unknown;
 
-      const loaded = loadSitePlanFromAnyProjectSession(parsed, {
+      const loaded = loadProjectFromAnySession(parsed, {
         scale,
         pos,
       });
@@ -189,17 +194,18 @@ export default function App() {
         return;
       }
 
-      setSourceDxfName(loaded.sourceDxfName);
-      loadBessPlacements(loaded.bessPlacements);
-      loadCablePaths(loaded.cablePaths);
-      setPoi(loaded.poi);
-      setToolMode(loaded.toolMode);
-      setBessSizeFactor(loaded.bessSizeFactor);
-      setHiddenLayers(loaded.hiddenLayers);
-      setScale(loaded.scale);
-      setPos(loaded.pos);
+      setSourceDxfName(loaded.sitePlan.sourceDxfName);
+      loadBessPlacements(loaded.sitePlan.bessPlacements);
+      loadCablePaths(loaded.sitePlan.cablePaths);
+      setPoi(loaded.sitePlan.poi);
+      setToolMode(loaded.sitePlan.toolMode);
+      setBessSizeFactor(loaded.sitePlan.bessSizeFactor);
+      setHiddenLayers(loaded.sitePlan.hiddenLayers);
+      setScale(loaded.sitePlan.scale);
+      setPos(loaded.sitePlan.pos);
       setSelectedBessId(null);
       setSelectedCableId(null);
+      sldEditor.loadSession(loaded.sldSession);
     } catch {
       window.alert("Failed to load project JSON.");
     }
@@ -479,20 +485,26 @@ export default function App() {
             />
           </div>
         ) : (
-          <div
-            style={{
-              height: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "#fff",
-              color: "#444",
-              fontSize: 16,
-              fontWeight: 500,
-            }}
-          >
-            Single-Line Diagram Builder interface coming next.
-          </div>
+          <SldBuilder
+            session={sldEditor.session}
+            palette={sldEditor.palette}
+            selectedNodeId={sldEditor.selectedNodeId}
+            selectedEdgeId={sldEditor.selectedEdgeId}
+            wireDraft={sldEditor.wireDraft}
+            reconnectDraft={sldEditor.reconnectDraft}
+            onSetToolMode={sldEditor.setToolMode}
+            onAddNode={sldEditor.addNode}
+            onMoveNode={sldEditor.moveNode}
+            onSelectNode={sldEditor.selectNode}
+            onSelectEdge={sldEditor.selectEdge}
+            onDeleteSelection={sldEditor.deleteSelection}
+            onBeginOrCompleteConnection={sldEditor.beginOrCompleteConnection}
+            onAddWireDraftCorner={sldEditor.addWireDraftCorner}
+            onUpdateWireDraftCursor={sldEditor.updateWireDraftCursor}
+            onBeginReconnect={sldEditor.beginReconnect}
+            onCancelDrafts={sldEditor.cancelDrafts}
+            onClearAll={sldEditor.clearAll}
+          />
         )}
       </div>
     </div>
