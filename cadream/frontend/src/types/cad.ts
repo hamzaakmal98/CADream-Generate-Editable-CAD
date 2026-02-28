@@ -45,11 +45,24 @@ export type Affine2D = {
   ty: number;
 };
 
-export type ToolMode = "pan" | "place-bess";
+export type ToolMode = "pan" | "place-bess" | "place-poi" | "draw-cable";
 
 export type BessPlacement = {
   id: number;
   label: string;
+  x: number;
+  y: number;
+};
+
+export type CablePath = {
+  id: number;
+  points: number[][];
+  from_bess_id: number | null;
+  to_bess_id: number | null;
+  to_poi: boolean;
+};
+
+export type PointOfInterconnection = {
   x: number;
   y: number;
 };
@@ -69,5 +82,7 @@ export type SitePlacementExport = {
   coordinate_space: "cad_world";
   entities: {
     bess: BessPlacementExport[];
+    poi: PointOfInterconnection | null;
+    cable_paths: CablePath[];
   };
 };

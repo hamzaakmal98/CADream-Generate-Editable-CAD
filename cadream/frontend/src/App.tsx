@@ -3,8 +3,10 @@ import type Konva from "konva";
 import CadCanvas from "./components/CadCanvas";
 import ControlPanel from "./components/ControlPanel";
 import { SIDEBAR_WIDTH } from "./constants/ui";
+import { useBessEditing } from "./hooks/useBessEditing";
+import { useCableRouting } from "./hooks/useCableRouting";
 import type {
-  BessPlacement,
+  PointOfInterconnection,
   RenderDoc,
   SitePlacementExport,
   ToolMode,
@@ -13,16 +15,14 @@ import { boundsFromInsertEntities, computeBessMarkerSize } from "./utils/cadGeom
 
 export default function App() {
   const stageRef = useRef<Konva.Stage | null>(null);
-  const nextBessIdRef = useRef(1);
   const [doc, setDoc] = useState<RenderDoc | null>(null);
   const [hiddenLayers, setHiddenLayers] = useState<Record<string, boolean>>({});
   const [scale, setScale] = useState(1);
   const [pos, setPos] = useState({ x: 20, y: 20 });
   const [toolMode, setToolMode] = useState<ToolMode>("pan");
-  const [bessPlacements, setBessPlacements] = useState<BessPlacement[]>([]);
-  const [selectedBessId, setSelectedBessId] = useState<number | null>(null);
   const [bessSizeFactor, setBessSizeFactor] = useState(1);
   const [sourceDxfName, setSourceDxfName] = useState<string | null>(null);
+  const [poi, setPoi] = useState<PointOfInterconnection | null>(null);
 
   const [stageSize, setStageSize] = useState({
     w: window.innerWidth - SIDEBAR_WIDTH,
@@ -46,6 +46,36 @@ export default function App() {
     [doc, bessSizeFactor]
   );
 
+  const {
+    bessPlacements,
+    selectedBessId,
+    addBessAt,
+    setSelectedBessId,
+    setBessPlacements,
+    deleteSelectedBess,
+    clearBess,
+  } = useBessEditing();
+
+  const {
+    cablePaths,
+    draftCablePoints,
+    selectedCableId,
+    setSelectedCableId,
+    addDraftPoint,
+    finishCableDraft,
+    cancelCableDraft,
+    deleteSelectedCable,
+    clearCables,
+    updateSelectedCableStart,
+    snapAllCableEndsToPoi,
+    snapPointToNearestBess,
+  } = useCableRouting({
+    bessPlacements,
+    poi,
+    bessMarkerSize,
+    scale,
+  });
+
   const sitePlacementPayload = useMemo<SitePlacementExport>(
     () => ({
       schema_version: "v1",
@@ -60,10 +90,18 @@ export default function App() {
             y: item.y,
           },
         })),
+        poi,
+        cable_paths: cablePaths,
       },
     }),
-    [bessPlacements, sourceDxfName]
+    [bessPlacements, cablePaths, poi, sourceDxfName]
   );
+
+  useEffect(() => {
+    if (poi) {
+      snapAllCableEndsToPoi(poi);
+    }
+  }, [poi, snapAllCableEndsToPoi]);
 
   useEffect(() => {
     localStorage.setItem("cadream.sitePlacementPayload", JSON.stringify(sitePlacementPayload));
@@ -137,18 +175,54 @@ export default function App() {
       const world = pointerToWorld();
       if (!world) return;
 
-      const id = nextBessIdRef.current;
-      nextBessIdRef.current += 1;
+      addBessAt(world.x, world.y);
+      setSelectedCableId(null);
+      return;
+    }
 
-      const newPlacement: BessPlacement = {
-        id,
-        label: `BESS-${id}`,
-        x: world.x,
-        y: world.y,
-      };
+    if (toolMode === "place-poi") {
+      const world = pointerToWorld();
+      if (!world) return;
+      setPoi({ x: world.x, y: world.y });
+      setSelectedBessId(null);
+      setSelectedCableId(null);
+      return;
+    }
 
-      setBessPlacements((prev) => [...prev, newPlacement]);
-      setSelectedBessId(id);
+    if (toolMode === "draw-cable") {
+      const clickedBess = e.target?.findAncestor?.(".bess-marker", true);
+      const clickedCable = e.target?.findAncestor?.(".cable-path", true);
+      if (clickedCable) return;
+
+      if (clickedBess) {
+        const bessId = Number(clickedBess.getAttr("bessId"));
+        const bess = bessPlacements.find((b) => b.id === bessId);
+        if (!bess) return;
+
+        addDraftPoint([bess.x, bess.y]);
+        setSelectedBessId(bess.id);
+        setSelectedCableId(null);
+        return;
+      }
+
+      const clickedPoi = e.target?.findAncestor?.(".poi-marker", true);
+      if (clickedPoi && poi) {
+        addDraftPoint([poi.x, poi.y]);
+        setSelectedBessId(null);
+        setSelectedCableId(null);
+        return;
+      }
+
+      const world = pointerToWorld();
+      if (!world) return;
+
+      const isFirstPoint = draftCablePoints.length === 0;
+      const firstSnap = isFirstPoint ? snapPointToNearestBess([world.x, world.y]) : null;
+      const pointToAdd = firstSnap?.point ?? [world.x, world.y];
+
+      addDraftPoint(pointToAdd);
+      setSelectedBessId(null);
+      setSelectedCableId(null);
       return;
     }
 
@@ -156,12 +230,7 @@ export default function App() {
     if (!clickedOnEmpty) return;
 
     setSelectedBessId(null);
-  }
-
-  function deleteSelectedBess() {
-    if (selectedBessId === null) return;
-    setBessPlacements((prev) => prev.filter((b) => b.id !== selectedBessId));
-    setSelectedBessId(null);
+    setSelectedCableId(null);
   }
 
   function onStageDragEnd(e: Konva.KonvaEventObject<Event>) {
@@ -203,16 +272,22 @@ export default function App() {
         toolMode={toolMode}
         selectedBessId={selectedBessId}
         bessPlacements={bessPlacements}
+        selectedCableId={selectedCableId}
+        cablePaths={cablePaths}
+        draftCablePoints={draftCablePoints}
+        hasPoi={poi !== null}
         bessSizeFactor={bessSizeFactor}
         onUpload={onUpload}
         onFitToDrawing={() => doc?.bounds && fitToBounds(doc.bounds)}
         onToggleLayer={toggleLayer}
         onSetToolMode={setToolMode}
         onDeleteSelectedBess={deleteSelectedBess}
-        onClearBess={() => {
-          setBessPlacements([]);
-          setSelectedBessId(null);
-        }}
+        onClearBess={clearBess}
+        onFinishCable={finishCableDraft}
+        onCancelCableDraft={cancelCableDraft}
+        onDeleteSelectedCable={deleteSelectedCable}
+        onClearCables={clearCables}
+        onClearPoi={() => setPoi(null)}
         onSetBessSizeFactor={setBessSizeFactor}
       />
 
@@ -228,7 +303,7 @@ export default function App() {
         }}
       >
         {doc
-          ? `Entities: ${doc.entities.length} | BESS: ${bessPlacements.length}`
+          ? `Entities: ${doc.entities.length} | BESS: ${bessPlacements.length} | POI: ${poi ? "set" : "none"} | Cables: ${cablePaths.length}`
           : "No DXF loaded"}
       </div>
 
@@ -242,12 +317,18 @@ export default function App() {
         hiddenLayers={hiddenLayers}
         doc={doc}
         bessPlacements={bessPlacements}
+        cablePaths={cablePaths}
+        draftCablePoints={draftCablePoints}
+        poi={poi}
+        selectedCableId={selectedCableId}
         selectedBessId={selectedBessId}
         bessMarkerSize={bessMarkerSize}
         onWheel={onWheel}
         onStageMouseDown={onStageMouseDown}
         onStageDragEnd={onStageDragEnd}
         onSetSelectedBessId={setSelectedBessId}
+        onSetSelectedCableId={setSelectedCableId}
+        onUpdateSelectedCableStart={updateSelectedCableStart}
         onSetBessPlacements={setBessPlacements}
       />
     </div>

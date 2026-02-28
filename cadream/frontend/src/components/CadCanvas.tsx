@@ -4,6 +4,8 @@ import type { Dispatch, RefObject, SetStateAction } from "react";
 import type {
   Affine2D,
   BessPlacement,
+  CablePath,
+  PointOfInterconnection,
   RenderDoc,
   RenderEntity,
   ToolMode,
@@ -26,12 +28,18 @@ type CadCanvasProps = {
   hiddenLayers: Record<string, boolean>;
   doc: RenderDoc | null;
   bessPlacements: BessPlacement[];
+  cablePaths: CablePath[];
+  draftCablePoints: number[][];
+  poi: PointOfInterconnection | null;
+  selectedCableId: number | null;
   selectedBessId: number | null;
   bessMarkerSize: number;
   onWheel: (e: Konva.KonvaEventObject<WheelEvent>) => void;
   onStageMouseDown: (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => void;
   onStageDragEnd: (e: Konva.KonvaEventObject<Event>) => void;
   onSetSelectedBessId: (id: number | null) => void;
+  onSetSelectedCableId: (id: number | null) => void;
+  onUpdateSelectedCableStart: (point: number[]) => void;
   onSetBessPlacements: Dispatch<SetStateAction<BessPlacement[]>>;
 };
 
@@ -45,14 +53,21 @@ export default function CadCanvas({
   hiddenLayers,
   doc,
   bessPlacements,
+  cablePaths,
+  draftCablePoints,
+  poi,
+  selectedCableId,
   selectedBessId,
   bessMarkerSize,
   onWheel,
   onStageMouseDown,
   onStageDragEnd,
   onSetSelectedBessId,
+  onSetSelectedCableId,
+  onUpdateSelectedCableStart,
   onSetBessPlacements,
 }: CadCanvasProps) {
+  const selectedCable = cablePaths.find((c) => c.id === selectedCableId) ?? null;
   function renderInsertBlock(
     ins: Extract<RenderEntity, { type: "INSERT" }>,
     keyPrefix: string,
@@ -249,6 +264,61 @@ export default function CadCanvas({
             return null;
           })}
 
+          {cablePaths.map((cable) => {
+            const pts = cable.points.flatMap((p) => [p[0], -p[1]]);
+            const selected = cable.id === selectedCableId;
+
+            return (
+              <Line
+                key={`cable-${cable.id}`}
+                name="cable-path"
+                points={pts}
+                stroke={selected ? "#0057ff" : "#f97316"}
+                strokeWidth={Math.max(2, 3 / scale)}
+                hitStrokeWidth={20 / scale}
+                lineCap="round"
+                lineJoin="round"
+                onClick={() => onSetSelectedCableId(cable.id)}
+                onTap={() => onSetSelectedCableId(cable.id)}
+              />
+            );
+          })}
+
+          {draftCablePoints.length > 0 && (
+            <Line
+              points={draftCablePoints.flatMap((p) => [p[0], -p[1]])}
+              stroke="#fb923c"
+              strokeWidth={Math.max(2, 3 / scale)}
+              dash={[30 / scale, 20 / scale]}
+              lineCap="round"
+              lineJoin="round"
+            />
+          )}
+
+          {selectedCable && selectedCable.points.length > 0 && (
+            <Circle
+              x={selectedCable.points[0][0]}
+              y={-selectedCable.points[0][1]}
+              radius={Math.max(8, 10 / scale)}
+              fill="#2563eb"
+              stroke="white"
+              strokeWidth={Math.max(2, 2 / scale)}
+              draggable
+              onDragEnd={(e: Konva.KonvaEventObject<Event>) => {
+                onUpdateSelectedCableStart([e.target.x(), -e.target.y()]);
+              }}
+            />
+          )}
+
+          {poi && (
+            <Group name="poi-marker" x={poi.x} y={-poi.y}>
+              <Circle radius={Math.max(10, 12 / scale)} stroke="#7c3aed" strokeWidth={Math.max(2, 2 / scale)} fill="rgba(124, 58, 237, 0.18)" />
+              <Line points={[-14 / scale, 0, 14 / scale, 0]} stroke="#7c3aed" strokeWidth={Math.max(2, 2 / scale)} />
+              <Line points={[0, -14 / scale, 0, 14 / scale]} stroke="#7c3aed" strokeWidth={Math.max(2, 2 / scale)} />
+              <Text x={16 / scale} y={-16 / scale} text="POI" fill="#7c3aed" fontSize={Math.max(10, 12 / scale)} />
+            </Group>
+          )}
+
           {bessPlacements.map((bess) => {
             const selected = bess.id === selectedBessId;
             const x = bess.x;
@@ -261,6 +331,7 @@ export default function CadCanvas({
               <Group
                 key={`bess-${bess.id}`}
                 name="bess-marker"
+                bessId={bess.id}
                 x={x}
                 y={y}
                 draggable

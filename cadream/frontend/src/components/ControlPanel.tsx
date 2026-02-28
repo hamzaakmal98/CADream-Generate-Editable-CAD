@@ -1,4 +1,4 @@
-import type { BessPlacement, RenderDoc, ToolMode } from "../types/cad";
+import type { BessPlacement, CablePath, RenderDoc, ToolMode } from "../types/cad";
 import { SIDEBAR_WIDTH } from "../constants/ui";
 
 type ControlPanelProps = {
@@ -7,6 +7,10 @@ type ControlPanelProps = {
   toolMode: ToolMode;
   selectedBessId: number | null;
   bessPlacements: BessPlacement[];
+  selectedCableId: number | null;
+  cablePaths: CablePath[];
+  draftCablePoints: number[][];
+  hasPoi: boolean;
   bessSizeFactor: number;
   onUpload: (file: File) => void;
   onFitToDrawing: () => void;
@@ -14,6 +18,11 @@ type ControlPanelProps = {
   onSetToolMode: (mode: ToolMode) => void;
   onDeleteSelectedBess: () => void;
   onClearBess: () => void;
+  onFinishCable: () => void;
+  onCancelCableDraft: () => void;
+  onDeleteSelectedCable: () => void;
+  onClearCables: () => void;
+  onClearPoi: () => void;
   onSetBessSizeFactor: (value: number) => void;
 };
 
@@ -23,6 +32,10 @@ export default function ControlPanel({
   toolMode,
   selectedBessId,
   bessPlacements,
+  selectedCableId,
+  cablePaths,
+  draftCablePoints,
+  hasPoi,
   bessSizeFactor,
   onUpload,
   onFitToDrawing,
@@ -30,6 +43,11 @@ export default function ControlPanel({
   onSetToolMode,
   onDeleteSelectedBess,
   onClearBess,
+  onFinishCable,
+  onCancelCableDraft,
+  onDeleteSelectedCable,
+  onClearCables,
+  onClearPoi,
   onSetBessSizeFactor,
 }: ControlPanelProps) {
   return (
@@ -81,6 +99,26 @@ export default function ControlPanel({
         >
           Place BESS
         </button>
+        <button
+          style={{
+            padding: "6px 10px",
+            background: toolMode === "draw-cable" ? "#eee" : "white",
+          }}
+          disabled={!doc}
+          onClick={() => onSetToolMode("draw-cable")}
+        >
+          Draw Cable
+        </button>
+        <button
+          style={{
+            padding: "6px 10px",
+            background: toolMode === "place-poi" ? "#eee" : "white",
+          }}
+          disabled={!doc}
+          onClick={() => onSetToolMode("place-poi")}
+        >
+          Place POI
+        </button>
       </div>
 
       <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
@@ -97,12 +135,58 @@ export default function ControlPanel({
       </div>
 
       <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>
-        {toolMode === "place-bess"
-          ? "Click on site plan to place BESS."
-          : "Pan mode: drag canvas to navigate."}
+        {toolMode === "place-bess" && "Click on site plan to place BESS."}
+        {toolMode === "place-poi" && "Click on site plan to place or move POI."}
+        {toolMode === "draw-cable" && "Click to add cable vertices, then finish cable."}
+        {toolMode === "pan" && "Pan mode: drag canvas to navigate."}
       </div>
 
       <div style={{ fontSize: 12, color: "#666" }}>Placed BESS: {bessPlacements.length}</div>
+      <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>POI: {hasPoi ? "set" : "not set"}</div>
+
+      <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+        <button style={{ padding: "6px 10px" }} disabled={!hasPoi} onClick={onClearPoi}>
+          Clear POI
+        </button>
+      </div>
+
+      <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+        Cable paths: {cablePaths.length}
+      </div>
+
+      <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+        <button
+          style={{ padding: "6px 10px" }}
+          disabled={draftCablePoints.length < 2 || !hasPoi}
+          onClick={onFinishCable}
+        >
+          Finish Cable
+        </button>
+        <button
+          style={{ padding: "6px 10px" }}
+          disabled={draftCablePoints.length === 0}
+          onClick={onCancelCableDraft}
+        >
+          Cancel Draft
+        </button>
+      </div>
+
+      <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+        <button
+          style={{ padding: "6px 10px" }}
+          disabled={selectedCableId === null}
+          onClick={onDeleteSelectedCable}
+        >
+          Delete Cable
+        </button>
+        <button
+          style={{ padding: "6px 10px" }}
+          disabled={cablePaths.length === 0}
+          onClick={onClearCables}
+        >
+          Clear Cables
+        </button>
+      </div>
 
       <div style={{ marginTop: 8 }}>
         <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
