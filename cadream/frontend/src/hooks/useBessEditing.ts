@@ -4,7 +4,11 @@ import type { BessPlacement } from "../types/cad";
 type UseBessEditingResult = {
   bessPlacements: BessPlacement[];
   selectedBessId: number | null;
-  addBessAt: (x: number, y: number) => BessPlacement;
+  addBessAt: (
+    x: number,
+    y: number,
+    options?: Partial<Pick<BessPlacement, "block_name" | "rotation" | "xscale" | "yscale">>
+  ) => BessPlacement;
   setSelectedBessId: (id: number | null) => void;
   setBessPlacements: React.Dispatch<React.SetStateAction<BessPlacement[]>>;
   loadBessPlacements: (items: BessPlacement[]) => void;
@@ -17,7 +21,11 @@ export function useBessEditing(): UseBessEditingResult {
   const [bessPlacements, setBessPlacements] = useState<BessPlacement[]>([]);
   const [selectedBessId, setSelectedBessId] = useState<number | null>(null);
 
-  function addBessAt(x: number, y: number) {
+  function addBessAt(
+    x: number,
+    y: number,
+    options?: Partial<Pick<BessPlacement, "block_name" | "rotation" | "xscale" | "yscale">>
+  ) {
     const id = nextBessIdRef.current;
     nextBessIdRef.current += 1;
 
@@ -26,6 +34,10 @@ export function useBessEditing(): UseBessEditingResult {
       label: `BESS-${id}`,
       x,
       y,
+      block_name: options?.block_name ?? null,
+      rotation: options?.rotation ?? 0,
+      xscale: options?.xscale ?? 1,
+      yscale: options?.yscale ?? 1,
     };
 
     setBessPlacements((prev) => [...prev, placement]);

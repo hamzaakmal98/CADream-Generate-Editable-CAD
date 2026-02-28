@@ -496,50 +496,80 @@ export default function CadCanvas({
             const size = bessMarkerSize;
             const markerStroke = Math.max(4, size * 0.12);
             const markerFont = Math.max(24, size * 0.6);
+            const hasBlock = Boolean(bess.block_name && doc?.blocks?.[bess.block_name]);
+            const blockInsert =
+              hasBlock && bess.block_name
+                ? {
+                    type: "INSERT" as const,
+                    layer: "0",
+                    name: bess.block_name,
+                    pos: [bess.x, bess.y],
+                    rotation: bess.rotation,
+                    xscale: bess.xscale,
+                    yscale: bess.yscale,
+                  }
+                : null;
 
             return (
-              <Group
-                key={`bess-${bess.id}`}
-                name="bess-marker"
-                bessId={bess.id}
-                x={x}
-                y={y}
-                draggable
-                onClick={() => onSetSelectedBessId(bess.id)}
-                onTap={() => onSetSelectedBessId(bess.id)}
-                onDragEnd={(e: Konva.KonvaEventObject<Event>) => {
-                  const nx = e.target.x();
-                  const ny = -e.target.y();
-                  onSetBessPlacements((prev) =>
-                    prev.map((item) => (item.id === bess.id ? { ...item, x: nx, y: ny } : item))
-                  );
-                }}
-              >
-                <Circle
-                  x={0}
-                  y={0}
-                  radius={size}
-                  stroke={selected ? "#0057ff" : "#0b8f00"}
-                  strokeWidth={markerStroke}
-                  fill={selected ? "rgba(0, 87, 255, 0.18)" : "rgba(11, 143, 0, 0.18)"}
-                />
-                <Line
-                  points={[-size, 0, size, 0]}
-                  stroke={selected ? "#0057ff" : "#0b8f00"}
-                  strokeWidth={markerStroke}
-                />
-                <Line
-                  points={[0, -size, 0, size]}
-                  stroke={selected ? "#0057ff" : "#0b8f00"}
-                  strokeWidth={markerStroke}
-                />
-                <Text
-                  x={size + 3}
-                  y={-size - 4}
-                  text={bess.label}
-                  fontSize={markerFont}
-                  fill={selected ? "#0057ff" : "#0b8f00"}
-                />
+              <Group key={`bess-${bess.id}`}>
+                {blockInsert && renderInsertBlock(blockInsert, `bess-insert-${bess.id}`)}
+
+                <Group
+                  name="bess-marker"
+                  bessId={bess.id}
+                  x={x}
+                  y={y}
+                  draggable
+                  onClick={() => onSetSelectedBessId(bess.id)}
+                  onTap={() => onSetSelectedBessId(bess.id)}
+                  onDragEnd={(e: Konva.KonvaEventObject<Event>) => {
+                    const nx = e.target.x();
+                    const ny = -e.target.y();
+                    onSetBessPlacements((prev) =>
+                      prev.map((item) => (item.id === bess.id ? { ...item, x: nx, y: ny } : item))
+                    );
+                  }}
+                >
+                  {!hasBlock ? (
+                    <>
+                      <Circle
+                        x={0}
+                        y={0}
+                        radius={size}
+                        stroke={selected ? "#0057ff" : "#0b8f00"}
+                        strokeWidth={markerStroke}
+                        fill={selected ? "rgba(0, 87, 255, 0.18)" : "rgba(11, 143, 0, 0.18)"}
+                      />
+                      <Line
+                        points={[-size, 0, size, 0]}
+                        stroke={selected ? "#0057ff" : "#0b8f00"}
+                        strokeWidth={markerStroke}
+                      />
+                      <Line
+                        points={[0, -size, 0, size]}
+                        stroke={selected ? "#0057ff" : "#0b8f00"}
+                        strokeWidth={markerStroke}
+                      />
+                    </>
+                  ) : (
+                    <Circle
+                      x={0}
+                      y={0}
+                      radius={Math.max(8 / Math.max(scale, 0.0001), size * 0.12)}
+                      stroke={selected ? "#0057ff" : "#0b8f00"}
+                      strokeWidth={Math.max(2 / Math.max(scale, 0.0001), 1)}
+                      fill={selected ? "rgba(0, 87, 255, 0.35)" : "rgba(11, 143, 0, 0.28)"}
+                    />
+                  )}
+
+                  <Text
+                    x={size + 3}
+                    y={-size - 4}
+                    text={bess.label}
+                    fontSize={markerFont}
+                    fill={selected ? "#0057ff" : "#0b8f00"}
+                  />
+                </Group>
               </Group>
             );
           })}

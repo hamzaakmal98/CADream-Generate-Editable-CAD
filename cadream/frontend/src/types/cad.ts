@@ -52,6 +52,10 @@ export type BessPlacement = {
   label: string;
   x: number;
   y: number;
+  block_name: string | null;
+  rotation: number;
+  xscale: number;
+  yscale: number;
 };
 
 export type CablePath = {
@@ -73,6 +77,12 @@ export type BessPlacementExport = {
   cad_position: {
     x: number;
     y: number;
+  };
+  cad_insert: {
+    block_name: string | null;
+    rotation: number;
+    xscale: number;
+    yscale: number;
   };
 };
 
