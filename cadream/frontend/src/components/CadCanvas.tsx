@@ -1,5 +1,6 @@
-import { Circle, Group, Layer, Line, Stage, Text } from "react-konva";
+import { Circle, FastLayer, Group, Layer, Line, Stage, Text } from "react-konva";
 import type Konva from "konva";
+import { useMemo } from "react";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import type {
   Affine2D,
@@ -11,10 +12,17 @@ import type {
   ToolMode,
 } from "../types/cad";
 import {
+  adaptiveArcSegments,
+  adaptiveCircleSegments,
   arcPoints,
+  type Bounds2D,
+  boundsIntersect,
   composeTransforms,
+  entityBounds,
+  getViewportWorldBounds,
   identityTransform,
   insertTransform,
+  transformBounds,
   transformPoint,
 } from "../utils/cadGeometry";
 
@@ -34,6 +42,7 @@ type CadCanvasProps = {
   selectedCableId: number | null;
   selectedBessId: number | null;
   bessMarkerSize: number;
+  poiMarkerSize: number;
   onWheel: (e: Konva.KonvaEventObject<WheelEvent>) => void;
   onStageMouseDown: (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => void;
   onStageDragEnd: (e: Konva.KonvaEventObject<Event>) => void;
@@ -59,6 +68,7 @@ export default function CadCanvas({
   selectedCableId,
   selectedBessId,
   bessMarkerSize,
+  poiMarkerSize,
   onWheel,
   onStageMouseDown,
   onStageDragEnd,
@@ -68,6 +78,68 @@ export default function CadCanvas({
   onSetBessPlacements,
 }: CadCanvasProps) {
   const selectedCable = cablePaths.find((c) => c.id === selectedCableId) ?? null;
+  const viewportWorld = useMemo(
+    () => getViewportWorldBounds(stageSize, pos, scale),
+    [stageSize, pos, scale]
+  );
+  const isHeavyScene = useMemo(
+    () => visibleEntities.length > 15000 || (doc?.entities.length ?? 0) > 20000,
+    [visibleEntities.length, doc?.entities.length]
+  );
+  const arcPixelsPerSegment = isHeavyScene ? 20 : 10;
+  const arcMaxSegments = isHeavyScene ? 128 : 512;
+  const blockBoundsByName = useMemo(() => {
+    const blocks = doc?.blocks;
+    if (!blocks) return {} as Record<string, Bounds2D>;
+
+    const next: Record<string, Bounds2D> = {};
+
+    for (const [name, entities] of Object.entries(blocks)) {
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+
+      for (const ent of entities) {
+        const b = entityBounds(ent);
+        if (!b) continue;
+        minX = Math.min(minX, b.minX);
+        minY = Math.min(minY, b.minY);
+        maxX = Math.max(maxX, b.maxX);
+        maxY = Math.max(maxY, b.maxY);
+      }
+
+      if (isFinite(minX) && isFinite(minY) && isFinite(maxX) && isFinite(maxY)) {
+        next[name] = { minX, minY, maxX, maxY };
+      }
+    }
+
+    return next;
+  }, [doc?.blocks]);
+
+  function isEntityVisible(ent: RenderEntity, xform: Affine2D = identityTransform()) {
+    const bounds = entityBounds(ent);
+    if (!bounds) return true;
+    const worldBounds = transformBounds(bounds, xform);
+    if (!boundsIntersect(worldBounds, viewportWorld)) return false;
+
+    if (isHeavyScene) {
+      const wPx = Math.abs(worldBounds.maxX - worldBounds.minX) * Math.max(Math.abs(scale), 0.0001);
+      const hPx = Math.abs(worldBounds.maxY - worldBounds.minY) * Math.max(Math.abs(scale), 0.0001);
+      if (Math.max(wPx, hPx) < 0.7) return false;
+    }
+
+    return true;
+  }
+
+  function isInsertVisible(ins: Extract<RenderEntity, { type: "INSERT" }>, parentXform: Affine2D = identityTransform()) {
+    const xform = composeTransforms(parentXform, insertTransform(ins));
+    const blockBounds = blockBoundsByName[ins.name];
+    if (!blockBounds) return isEntityVisible(ins, xform);
+    const worldBounds = transformBounds(blockBounds, xform);
+    return boundsIntersect(worldBounds, viewportWorld);
+  }
+
   function renderInsertBlock(
     ins: Extract<RenderEntity, { type: "INSERT" }>,
     keyPrefix: string,
@@ -77,6 +149,7 @@ export default function CadCanvas({
   ) {
     if (depth > 10) return null;
     if (chain.includes(ins.name)) return null;
+    if (!isInsertVisible(ins, parentXform)) return null;
 
     const xform = composeTransforms(parentXform, insertTransform(ins));
     const block = doc?.blocks?.[ins.name];
@@ -88,7 +161,7 @@ export default function CadCanvas({
       const fontSize = 12 / scale;
 
       return (
-        <Group key={keyPrefix}>
+        <Group key={keyPrefix} listening={false}>
           <Line points={[x - size, y, x + size, y]} stroke="red" strokeWidth={2 / scale} />
           <Line points={[x, y - size, x, y + size]} stroke="red" strokeWidth={2 / scale} />
           <Text x={x + size + 2} y={y - size - 2} text={ins.name} fontSize={fontSize} />
@@ -100,9 +173,10 @@ export default function CadCanvas({
       (Math.hypot(xform.a, xform.c) + Math.hypot(xform.b, xform.d)) / 2 || 1;
 
     return (
-      <Group key={keyPrefix}>
+      <Group key={keyPrefix} listening={false}>
         {block.map((bEnt, bIdx) => {
           if (hiddenLayers[bEnt.layer]) return null;
+          if (!isEntityVisible(bEnt, xform)) return null;
 
           if (bEnt.type === "LINE") {
             const p1 = transformPoint(bEnt.p1[0], bEnt.p1[1], xform);
@@ -113,6 +187,8 @@ export default function CadCanvas({
                 points={[p1[0], -p1[1], p2[0], -p2[1]]}
                 stroke="black"
                 strokeWidth={1 / scale}
+                listening={false}
+                perfectDrawEnabled={false}
               />
             );
           }
@@ -130,12 +206,20 @@ export default function CadCanvas({
                 stroke="black"
                 strokeWidth={1 / scale}
                 closed={bEnt.closed}
+                listening={false}
+                perfectDrawEnabled={false}
               />
             );
           }
 
           if (bEnt.type === "CIRCLE") {
-            const circlePts = arcPoints(bEnt.center[0], bEnt.center[1], bEnt.r, 0, 360, 64)
+            const segs = adaptiveCircleSegments(
+              bEnt.r * avgScale,
+              scale,
+              arcPixelsPerSegment,
+              arcMaxSegments
+            );
+            const circlePts = arcPoints(bEnt.center[0], bEnt.center[1], bEnt.r, 0, 360, segs)
               .map((p) => transformPoint(p[0], p[1], xform))
               .flatMap((p) => [p[0], -p[1]]);
 
@@ -146,18 +230,28 @@ export default function CadCanvas({
                 stroke="red"
                 strokeWidth={1 / scale}
                 closed
+                listening={false}
+                perfectDrawEnabled={false}
               />
             );
           }
 
           if (bEnt.type === "ARC") {
+            const segs = adaptiveArcSegments(
+              bEnt.r * avgScale,
+              bEnt.start_angle,
+              bEnt.end_angle,
+              scale,
+              arcPixelsPerSegment,
+              arcMaxSegments
+            );
             const arcPts = arcPoints(
               bEnt.center[0],
               bEnt.center[1],
               bEnt.r,
               bEnt.start_angle,
               bEnt.end_angle,
-              40
+              segs
             )
               .map((p) => transformPoint(p[0], p[1], xform))
               .flatMap((p) => [p[0], -p[1]]);
@@ -168,6 +262,8 @@ export default function CadCanvas({
                 points={arcPts}
                 stroke="black"
                 strokeWidth={1 / scale}
+                listening={false}
+                perfectDrawEnabled={false}
               />
             );
           }
@@ -181,6 +277,7 @@ export default function CadCanvas({
                 y={-p[1]}
                 text={bEnt.text}
                 fontSize={Math.max(8 / scale, bEnt.height * avgScale)}
+                listening={false}
               />
             );
           }
@@ -216,8 +313,11 @@ export default function CadCanvas({
         onMouseDown={onStageMouseDown}
         onDragEnd={onStageDragEnd}
       >
-        <Layer>
+        <FastLayer listening={false}>
           {visibleEntities.map((ent, idx) => {
+            if (ent.type === "INSERT" && !isInsertVisible(ent)) return null;
+            if (ent.type !== "INSERT" && !isEntityVisible(ent)) return null;
+
             if (ent.type === "LINE") {
               return (
                 <Line
@@ -225,6 +325,8 @@ export default function CadCanvas({
                   points={[ent.p1[0], -ent.p1[1], ent.p2[0], -ent.p2[1]]}
                   stroke="black"
                   strokeWidth={1}
+                  listening={false}
+                  perfectDrawEnabled={false}
                 />
               );
             }
@@ -232,18 +334,64 @@ export default function CadCanvas({
               const pts = ent.points.flatMap((p) => [p[0], -p[1]]);
               if (ent.closed) pts.push(ent.points[0][0], -ent.points[0][1]);
               return (
-                <Line key={idx} points={pts} stroke="black" strokeWidth={1} closed={ent.closed} />
+                <Line
+                  key={idx}
+                  points={pts}
+                  stroke="black"
+                  strokeWidth={1}
+                  closed={ent.closed}
+                  listening={false}
+                  perfectDrawEnabled={false}
+                />
               );
             }
             if (ent.type === "CIRCLE") {
+              const segs = adaptiveCircleSegments(
+                ent.r,
+                scale,
+                arcPixelsPerSegment,
+                arcMaxSegments
+              );
+              const circlePts = arcPoints(ent.center[0], ent.center[1], ent.r, 0, 360, segs).flatMap(
+                (p) => [p[0], -p[1]]
+              );
               return (
-                <Circle
+                <Line
                   key={idx}
-                  x={ent.center[0]}
-                  y={-ent.center[1]}
-                  radius={ent.r}
+                  points={circlePts}
                   stroke="red"
                   strokeWidth={1}
+                  closed
+                  listening={false}
+                  perfectDrawEnabled={false}
+                />
+              );
+            }
+            if (ent.type === "ARC") {
+              const segs = adaptiveArcSegments(
+                ent.r,
+                ent.start_angle,
+                ent.end_angle,
+                scale,
+                arcPixelsPerSegment,
+                arcMaxSegments
+              );
+              const arcPts = arcPoints(
+                ent.center[0],
+                ent.center[1],
+                ent.r,
+                ent.start_angle,
+                ent.end_angle,
+                segs
+              ).flatMap((p) => [p[0], -p[1]]);
+              return (
+                <Line
+                  key={idx}
+                  points={arcPts}
+                  stroke="black"
+                  strokeWidth={1}
+                  listening={false}
+                  perfectDrawEnabled={false}
                 />
               );
             }
@@ -255,6 +403,7 @@ export default function CadCanvas({
                   y={-ent.pos[1]}
                   text={ent.text}
                   fontSize={Math.max(8, ent.height)}
+                  listening={false}
                 />
               );
             }
@@ -263,7 +412,9 @@ export default function CadCanvas({
             }
             return null;
           })}
+        </FastLayer>
 
+        <Layer>
           {cablePaths.map((cable) => {
             const pts = cable.points.flatMap((p) => [p[0], -p[1]]);
             const selected = cable.id === selectedCableId;
@@ -312,10 +463,29 @@ export default function CadCanvas({
 
           {poi && (
             <Group name="poi-marker" x={poi.x} y={-poi.y}>
-              <Circle radius={Math.max(10, 12 / scale)} stroke="#7c3aed" strokeWidth={Math.max(2, 2 / scale)} fill="rgba(124, 58, 237, 0.18)" />
-              <Line points={[-14 / scale, 0, 14 / scale, 0]} stroke="#7c3aed" strokeWidth={Math.max(2, 2 / scale)} />
-              <Line points={[0, -14 / scale, 0, 14 / scale]} stroke="#7c3aed" strokeWidth={Math.max(2, 2 / scale)} />
-              <Text x={16 / scale} y={-16 / scale} text="POI" fill="#7c3aed" fontSize={Math.max(10, 12 / scale)} />
+              <Circle
+                radius={poiMarkerSize}
+                stroke="#7c3aed"
+                strokeWidth={Math.max(4, poiMarkerSize * 0.12)}
+                fill="rgba(124, 58, 237, 0.18)"
+              />
+              <Line
+                points={[-poiMarkerSize, 0, poiMarkerSize, 0]}
+                stroke="#7c3aed"
+                strokeWidth={Math.max(4, poiMarkerSize * 0.12)}
+              />
+              <Line
+                points={[0, -poiMarkerSize, 0, poiMarkerSize]}
+                stroke="#7c3aed"
+                strokeWidth={Math.max(4, poiMarkerSize * 0.12)}
+              />
+              <Text
+                x={poiMarkerSize + 3}
+                y={-poiMarkerSize - 4}
+                text="POI"
+                fill="#7c3aed"
+                fontSize={Math.max(24, poiMarkerSize * 0.6)}
+              />
             </Group>
           )}
 

@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import type { BessPlacement, CablePath, RenderDoc, ToolMode } from "../types/cad";
 import { SIDEBAR_WIDTH } from "../constants/ui";
 
@@ -24,6 +25,8 @@ type ControlPanelProps = {
   onClearCables: () => void;
   onClearPoi: () => void;
   onSetBessSizeFactor: (value: number) => void;
+  onSaveProject: () => void;
+  onLoadProject: (file: File) => void;
 };
 
 export default function ControlPanel({
@@ -49,7 +52,11 @@ export default function ControlPanel({
   onClearCables,
   onClearPoi,
   onSetBessSizeFactor,
+  onSaveProject,
+  onLoadProject,
 }: ControlPanelProps) {
+  const loadProjectInputRef = useRef<HTMLInputElement | null>(null);
+
   return (
     <div
       style={{
@@ -77,6 +84,30 @@ export default function ControlPanel({
       >
         Fit to drawing
       </button>
+
+      <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+        <button style={{ padding: "6px 10px" }} onClick={onSaveProject}>
+          Save Project
+        </button>
+        <button
+          style={{ padding: "6px 10px" }}
+          onClick={() => loadProjectInputRef.current?.click()}
+        >
+          Load Project
+        </button>
+      </div>
+
+      <input
+        ref={loadProjectInputRef}
+        type="file"
+        accept=".json,application/json"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onLoadProject(file);
+          e.currentTarget.value = "";
+        }}
+      />
 
       <hr />
 

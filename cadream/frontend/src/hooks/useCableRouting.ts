@@ -18,6 +18,7 @@ type UseCableRoutingResult = {
   draftCablePoints: number[][];
   selectedCableId: number | null;
   setSelectedCableId: (id: number | null) => void;
+  loadCablePaths: (items: CablePath[]) => void;
   addDraftPoint: (point: number[]) => void;
   finishCableDraft: () => void;
   cancelCableDraft: () => void;
@@ -109,6 +110,15 @@ export function useCableRouting({
     setCablePaths([]);
     setDraftCablePoints([]);
     setSelectedCableId(null);
+    nextCableIdRef.current = 1;
+  }
+
+  function loadCablePaths(items: CablePath[]) {
+    setCablePaths(items);
+    setDraftCablePoints([]);
+    setSelectedCableId(null);
+    const maxId = items.reduce((max, item) => Math.max(max, item.id), 0);
+    nextCableIdRef.current = maxId + 1;
   }
 
   function updateSelectedCableStart(point: number[]) {
@@ -153,6 +163,7 @@ export function useCableRouting({
     draftCablePoints,
     selectedCableId,
     setSelectedCableId,
+    loadCablePaths,
     addDraftPoint,
     finishCableDraft,
     cancelCableDraft,

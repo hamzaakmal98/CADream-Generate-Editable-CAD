@@ -6,12 +6,19 @@ import { SIDEBAR_WIDTH } from "./constants/ui";
 import { useBessEditing } from "./hooks/useBessEditing";
 import { useCableRouting } from "./hooks/useCableRouting";
 import type {
+  CablePath,
+  BessPlacement,
   PointOfInterconnection,
+  ProjectSession,
   RenderDoc,
   SitePlacementExport,
   ToolMode,
 } from "./types/cad";
-import { boundsFromInsertEntities, computeBessMarkerSize } from "./utils/cadGeometry";
+import {
+  boundsFromInsertEntities,
+  computeBessMarkerSize,
+  estimateStructureBounds,
+} from "./utils/cadGeometry";
 
 export default function App() {
   const stageRef = useRef<Konva.Stage | null>(null);
@@ -45,6 +52,7 @@ export default function App() {
     () => computeBessMarkerSize(doc?.bounds ?? null, bessSizeFactor),
     [doc, bessSizeFactor]
   );
+  const poiMarkerSize = bessMarkerSize;
 
   const {
     bessPlacements,
@@ -52,6 +60,7 @@ export default function App() {
     addBessAt,
     setSelectedBessId,
     setBessPlacements,
+    loadBessPlacements,
     deleteSelectedBess,
     clearBess,
   } = useBessEditing();
@@ -61,6 +70,7 @@ export default function App() {
     draftCablePoints,
     selectedCableId,
     setSelectedCableId,
+    loadCablePaths,
     addDraftPoint,
     finishCableDraft,
     cancelCableDraft,
@@ -107,6 +117,166 @@ export default function App() {
     localStorage.setItem("cadream.sitePlacementPayload", JSON.stringify(sitePlacementPayload));
   }, [sitePlacementPayload]);
 
+  function getBestFitBounds(data: RenderDoc) {
+    return (
+      estimateStructureBounds(data.entities) ||
+      boundsFromInsertEntities(data.entities) ||
+      data.bounds
+    );
+  }
+
+  function isToolMode(value: unknown): value is ToolMode {
+    return value === "pan" || value === "place-bess" || value === "place-poi" || value === "draw-cable";
+  }
+
+  function normalizeBess(items: unknown): BessPlacement[] {
+    if (!Array.isArray(items)) return [];
+    return items
+      .map((item) => {
+        const next = item as Partial<BessPlacement>;
+        if (
+          typeof next?.id !== "number" ||
+          typeof next?.x !== "number" ||
+          typeof next?.y !== "number"
+        ) {
+          return null;
+        }
+        const label = typeof next.label === "string" ? next.label : `BESS-${next.id}`;
+        return {
+          id: next.id,
+          label,
+          x: next.x,
+          y: next.y,
+        };
+      })
+      .filter((item): item is BessPlacement => item !== null);
+  }
+
+  function normalizePoi(value: unknown): PointOfInterconnection | null {
+    if (!value || typeof value !== "object") return null;
+    const next = value as Partial<PointOfInterconnection>;
+    if (typeof next.x !== "number" || typeof next.y !== "number") return null;
+    return { x: next.x, y: next.y };
+  }
+
+  function normalizeCablePaths(items: unknown): CablePath[] {
+    if (!Array.isArray(items)) return [];
+    return items
+      .map((item) => {
+        const next = item as Partial<CablePath>;
+        if (typeof next?.id !== "number" || !Array.isArray(next?.points)) return null;
+
+        const points = next.points
+          .map((point) =>
+            Array.isArray(point) && point.length >= 2 && typeof point[0] === "number" && typeof point[1] === "number"
+              ? [point[0], point[1]]
+              : null
+          )
+          .filter((point): point is number[] => point !== null);
+
+        if (points.length < 2) return null;
+
+        return {
+          id: next.id,
+          points,
+          from_bess_id: typeof next.from_bess_id === "number" ? next.from_bess_id : null,
+          to_bess_id: typeof next.to_bess_id === "number" ? next.to_bess_id : null,
+          to_poi: Boolean(next.to_poi),
+        };
+      })
+      .filter((item): item is CablePath => item !== null);
+  }
+
+  function onSaveProject() {
+    const session: ProjectSession = {
+      schema_version: "cadream-project-v1",
+      source_dxf_filename: sourceDxfName,
+      entities: {
+        bess: bessPlacements,
+        poi,
+        cable_paths: cablePaths,
+      },
+      tool_settings: {
+        tool_mode: toolMode,
+        bess_size_factor: bessSizeFactor,
+        hidden_layers: hiddenLayers,
+        viewport: {
+          scale,
+          pos,
+        },
+      },
+    };
+
+    const blob = new Blob([JSON.stringify(session, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    const fileBase = sourceDxfName ? sourceDxfName.replace(/\.[^.]+$/, "") : "cadream-project";
+    anchor.href = url;
+    anchor.download = `${fileBase}.project.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function onLoadProject(file: File) {
+    try {
+      const raw = await file.text();
+      const parsed = JSON.parse(raw) as Partial<ProjectSession>;
+
+      if (parsed?.schema_version !== "cadream-project-v1") {
+        window.alert("Unsupported project file format.");
+        return;
+      }
+
+      const nextBess = normalizeBess(parsed.entities?.bess);
+      const nextPoi = normalizePoi(parsed.entities?.poi);
+      const nextCables = normalizeCablePaths(parsed.entities?.cable_paths);
+
+      const nextToolMode = isToolMode(parsed.tool_settings?.tool_mode)
+        ? parsed.tool_settings.tool_mode
+        : "pan";
+      const nextBessSize =
+        typeof parsed.tool_settings?.bess_size_factor === "number"
+          ? parsed.tool_settings.bess_size_factor
+          : 1;
+
+      const nextHiddenLayers =
+        parsed.tool_settings?.hidden_layers && typeof parsed.tool_settings.hidden_layers === "object"
+          ? parsed.tool_settings.hidden_layers
+          : {};
+
+      const nextScale =
+        typeof parsed.tool_settings?.viewport?.scale === "number"
+          ? parsed.tool_settings.viewport.scale
+          : scale;
+
+      const nextPos =
+        typeof parsed.tool_settings?.viewport?.pos?.x === "number" &&
+        typeof parsed.tool_settings?.viewport?.pos?.y === "number"
+          ? parsed.tool_settings.viewport.pos
+          : pos;
+
+      setSourceDxfName(
+        typeof parsed.source_dxf_filename === "string" || parsed.source_dxf_filename === null
+          ? parsed.source_dxf_filename
+          : null
+      );
+      loadBessPlacements(nextBess);
+      loadCablePaths(nextCables);
+      setPoi(nextPoi);
+      setToolMode(nextToolMode);
+      setBessSizeFactor(nextBessSize);
+      setHiddenLayers(nextHiddenLayers);
+      setScale(nextScale);
+      setPos(nextPos);
+      setSelectedBessId(null);
+      setSelectedCableId(null);
+    } catch {
+      window.alert("Failed to load project JSON.");
+    }
+  }
+
   async function onUpload(file: File) {
     setSourceDxfName(file.name);
     const fd = new FormData();
@@ -118,13 +288,12 @@ export default function App() {
     });
 
     const data = (await res.json()) as RenderDoc;
-    const insertBounds = boundsFromInsertEntities(data.entities);
+    const fitBounds = getBestFitBounds(data);
 
     setDoc(data);
     (window as Window & { __doc?: RenderDoc }).__doc = data;
 
-    if (insertBounds) fitToBounds(insertBounds);
-    else if (data.bounds) fitToBounds(data.bounds);
+    if (fitBounds) fitToBounds(fitBounds);
   }
 
   function toggleLayer(name: string) {
@@ -259,7 +428,7 @@ export default function App() {
     const centerY = (minY + maxY) / 2;
 
     setPos({
-      x: viewportW / 2 - centerX * newScale + SIDEBAR_WIDTH,
+      x: viewportW / 2 - centerX * newScale,
       y: viewportH / 2 - -centerY * newScale,
     });
   }
@@ -278,7 +447,11 @@ export default function App() {
         hasPoi={poi !== null}
         bessSizeFactor={bessSizeFactor}
         onUpload={onUpload}
-        onFitToDrawing={() => doc?.bounds && fitToBounds(doc.bounds)}
+        onFitToDrawing={() => {
+          if (!doc) return;
+          const fitBounds = getBestFitBounds(doc);
+          if (fitBounds) fitToBounds(fitBounds);
+        }}
         onToggleLayer={toggleLayer}
         onSetToolMode={setToolMode}
         onDeleteSelectedBess={deleteSelectedBess}
@@ -289,6 +462,8 @@ export default function App() {
         onClearCables={clearCables}
         onClearPoi={() => setPoi(null)}
         onSetBessSizeFactor={setBessSizeFactor}
+        onSaveProject={onSaveProject}
+        onLoadProject={onLoadProject}
       />
 
       <div
@@ -323,6 +498,7 @@ export default function App() {
         selectedCableId={selectedCableId}
         selectedBessId={selectedBessId}
         bessMarkerSize={bessMarkerSize}
+        poiMarkerSize={poiMarkerSize}
         onWheel={onWheel}
         onStageMouseDown={onStageMouseDown}
         onStageDragEnd={onStageDragEnd}

@@ -86,3 +86,22 @@ export type SitePlacementExport = {
     cable_paths: CablePath[];
   };
 };
+
+export type ProjectSession = {
+  schema_version: "cadream-project-v1";
+  source_dxf_filename: string | null;
+  entities: {
+    bess: BessPlacement[];
+    poi: PointOfInterconnection | null;
+    cable_paths: CablePath[];
+  };
+  tool_settings: {
+    tool_mode: ToolMode;
+    bess_size_factor: number;
+    hidden_layers: Record<string, boolean>;
+    viewport: {
+      scale: number;
+      pos: { x: number; y: number };
+    };
+  };
+};
