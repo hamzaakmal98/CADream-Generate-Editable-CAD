@@ -42,12 +42,18 @@ type SldBuilderProps = {
   onBeginOrCompleteConnection: (nodeId: string, terminalId: string) => void;
   onAddWireDraftCorner: (point: number[]) => void;
   onUpdateWireDraftCursor: (point: number[] | null) => void;
-  onBeginReconnect: (endpoint: "from" | "to") => void;
   onCancelDrafts: () => void;
   onClearAll: () => void;
 };
 
-const TOOL_BUTTON_STYLE = { padding: "6px 10px", border: "1px solid #ccc", borderRadius: 6 };
+const TOOL_BUTTON_STYLE = {
+  padding: "6px 10px",
+  border: "1px solid #cfd7e3",
+  borderRadius: 6,
+  background: "#fff",
+  fontSize: 13,
+  color: "#0f172a",
+} as const;
 const TERMINAL_SNAP_RADIUS = 14;
 
 export default function SldBuilder({
@@ -66,7 +72,6 @@ export default function SldBuilder({
   onBeginOrCompleteConnection,
   onAddWireDraftCorner,
   onUpdateWireDraftCursor,
-  onBeginReconnect,
   onCancelDrafts,
   onClearAll,
 }: SldBuilderProps) {
@@ -77,16 +82,6 @@ export default function SldBuilder({
     offsetX: number;
     offsetY: number;
   } | null>(null);
-
-  const selectedNode = useMemo(
-    () => session.nodes.find((node) => node.id === selectedNodeId) ?? null,
-    [session.nodes, selectedNodeId]
-  );
-
-  const selectedEdge = useMemo(
-    () => session.edges.find((edge) => edge.id === selectedEdgeId) ?? null,
-    [session.edges, selectedEdgeId]
-  );
 
   function canvasPoint(clientX: number, clientY: number) {
     const rect = canvasRef.current?.getBoundingClientRect();
@@ -185,6 +180,35 @@ export default function SldBuilder({
     const tail = orthogonalLeg(last, wireDraft.cursor);
     return [...wireDraft.points, ...tail];
   }, [wireDraft]);
+
+  const selectedNode = useMemo(
+    () => session.nodes.find((node) => node.id === selectedNodeId) ?? null,
+    [session.nodes, selectedNodeId]
+  );
+
+  const selectedEdge = useMemo(
+    () => session.edges.find((edge) => edge.id === selectedEdgeId) ?? null,
+    [session.edges, selectedEdgeId]
+  );
+
+  const selectedSummary = useMemo(() => {
+    if (selectedNode) {
+      const cleanLabel = selectedNode.label.replace(/\s+\d+$/, "").trim();
+      return `Selected: ${cleanLabel || selectedNode.symbol_type}`;
+    }
+
+    if (selectedEdge) {
+      const fromNode = session.nodes.find((node) => node.id === selectedEdge.from_node_id);
+      const toNode = session.nodes.find((node) => node.id === selectedEdge.to_node_id);
+
+      const fromLabel = fromNode?.label ?? selectedEdge.from_node_id;
+      const toLabel = toNode?.label ?? selectedEdge.to_node_id;
+
+      return `Selected: Connection (${fromLabel} → ${toLabel})`;
+    }
+
+    return "Selected: none";
+  }, [selectedNode, selectedEdge, session.nodes]);
 
   function isTerminalConnected(nodeId: string, terminalId: string) {
     return session.edges.some(
@@ -303,6 +327,7 @@ export default function SldBuilder({
           style={{
             display: "flex",
             gap: 8,
+            flexWrap: "wrap",
             padding: "10px 12px",
             borderBottom: "1px solid #e2e8f0",
             background: "#ffffff",
@@ -322,8 +347,13 @@ export default function SldBuilder({
               {mode}
             </button>
           ))}
-          <button style={TOOL_BUTTON_STYLE} onClick={onDeleteSelection}>
-            Delete Selection
+          <button
+            style={TOOL_BUTTON_STYLE}
+            onClick={onDeleteSelection}
+            disabled={selectedNodeId === null}
+            title={selectedNodeId ? "Delete selected symbol" : "Select a symbol to delete"}
+          >
+            Delete Symbol
           </button>
           <button
             style={TOOL_BUTTON_STYLE}
@@ -339,6 +369,22 @@ export default function SldBuilder({
           <button style={TOOL_BUTTON_STYLE} onClick={onClearAll}>
             Clear Canvas
           </button>
+          <div
+            style={{
+              alignSelf: "center",
+              padding: "4px 8px",
+              borderRadius: 999,
+              border: "1px solid #d6deea",
+              background: "#f8fafc",
+              fontSize: 12,
+              color: "#334155",
+            }}
+          >
+            {selectedSummary}
+          </div>
+          <div style={{ marginLeft: "auto", fontSize: 12, color: "#475569", alignSelf: "center" }}>
+            Nodes: {session.nodes.length} · Edges: {session.edges.length}
+          </div>
         </div>
 
         <div
@@ -435,8 +481,8 @@ export default function SldBuilder({
                   startNodeDrag(e, node.id, node.x, node.y);
                 }}
                 onClick={(e) => {
-                  if (session.tool_settings.tool_mode !== "connect") return;
                   e.stopPropagation();
+                  if (session.tool_settings.tool_mode !== "connect") return;
                   trySnapAtClientPoint(e.clientX, e.clientY);
                 }}
                 style={{
@@ -497,95 +543,6 @@ export default function SldBuilder({
               </div>
             );
           })}
-        </div>
-        <div
-          style={{
-            borderTop: "1px solid #dbe1ea",
-            background: "#ffffff",
-            padding: "8px 12px",
-          }}
-        >
-          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: "#0f172a" }}>
-            Inspector
-          </div>
-
-          <div style={{ display: "flex", gap: 20, flexWrap: "wrap", fontSize: 12, color: "#334155" }}>
-            <div>
-              <div style={{ fontWeight: 700 }}>Summary</div>
-              <div>Nodes: {session.nodes.length}</div>
-              <div>Edges: {session.edges.length}</div>
-            </div>
-
-            <div>
-              <div style={{ fontWeight: 700 }}>Selection</div>
-              {selectedNode ? (
-                <>
-                  <div>Node: {selectedNode.id}</div>
-                  <div>Type: {selectedNode.symbol_type}</div>
-                  <div>
-                    Position: {Math.round(selectedNode.x)}, {Math.round(selectedNode.y)}
-                  </div>
-                </>
-              ) : selectedEdge ? (
-                <>
-                  <div>Edge: {selectedEdge.id}</div>
-                  <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                    <button style={TOOL_BUTTON_STYLE} onClick={() => onBeginReconnect("from")}>
-                      Reconnect Start
-                    </button>
-                    <button style={TOOL_BUTTON_STYLE} onClick={() => onBeginReconnect("to")}>
-                      Reconnect End
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div>No selection</div>
-              )}
-            </div>
-
-            <div>
-              <div style={{ fontWeight: 700 }}>Terminal Legend</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: "50%",
-                    display: "inline-block",
-                    background: "#9ca3af",
-                    border: "1px solid #000",
-                  }}
-                />
-                Open
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: "50%",
-                    display: "inline-block",
-                    background: "#000",
-                    border: "1px solid #000",
-                  }}
-                />
-                Connected
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: "50%",
-                    display: "inline-block",
-                    background: "#f97316",
-                    border: "1px solid #000",
-                  }}
-                />
-                Active start
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
