@@ -34,6 +34,10 @@ type SldBuilderProps = {
   wireDraft: { fromNodeId: string; fromTerminalId: string; points: number[][]; cursor: number[] | null } | null;
   reconnectDraft: { edgeId: string; endpoint: "from" | "to" } | null;
   onSetToolMode: (mode: SldToolMode) => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
   onAddNode: (type: SldSymbolType, x: number, y: number) => void;
   onMoveNode: (nodeId: string, x: number, y: number) => void;
   onSelectNode: (nodeId: string | null) => void;
@@ -64,6 +68,10 @@ export default function SldBuilder({
   wireDraft,
   reconnectDraft,
   onSetToolMode,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
   onAddNode,
   onMoveNode,
   onSelectNode,
@@ -344,9 +352,15 @@ export default function SldBuilder({
               }}
               onClick={() => onSetToolMode(mode)}
             >
-              {mode}
+              {mode.charAt(0).toUpperCase() + mode.slice(1)}
             </button>
           ))}
+          <button style={TOOL_BUTTON_STYLE} onClick={onUndo} disabled={!canUndo}>
+            Undo
+          </button>
+          <button style={TOOL_BUTTON_STYLE} onClick={onRedo} disabled={!canRedo}>
+            Redo
+          </button>
           <button
             style={TOOL_BUTTON_STYLE}
             onClick={onDeleteSelection}

@@ -612,6 +612,10 @@ export default function App() {
             wireDraft={sldEditor.wireDraft}
             reconnectDraft={sldEditor.reconnectDraft}
             onSetToolMode={sldEditor.setToolMode}
+            onUndo={sldEditor.undo}
+            onRedo={sldEditor.redo}
+            canUndo={sldEditor.canUndo}
+            canRedo={sldEditor.canRedo}
             onAddNode={sldEditor.addNode}
             onMoveNode={sldEditor.moveNode}
             onSelectNode={sldEditor.selectNode}
