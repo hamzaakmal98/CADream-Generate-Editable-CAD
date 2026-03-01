@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
-import type { DragEvent, MouseEvent } from "react";
-import type { SldToolMode } from "../../types/cad";
+import type { ChangeEvent, DragEvent, MouseEvent } from "react";
+import type { SldSessionState, SldToolMode } from "../../types/cad";
 import type { SldPaletteItem, SldSymbolType } from "../../types/sld";
 import { getSldSymbolDefinition } from "../../utils/sld/symbolRegistry";
 import { orthogonalLeg } from "../../utils/sld/validation";
@@ -48,6 +48,8 @@ type SldBuilderProps = {
   onUpdateWireDraftCursor: (point: number[] | null) => void;
   onCancelDrafts: () => void;
   onClearAll: () => void;
+  onLoadSession: (session: SldSessionState) => void;
+  onExportPages2425: () => Promise<void>;
 };
 
 const TOOL_BUTTON_STYLE = {
@@ -82,9 +84,15 @@ export default function SldBuilder({
   onUpdateWireDraftCursor,
   onCancelDrafts,
   onClearAll,
+  onLoadSession,
+  onExportPages2425,
 }: SldBuilderProps) {
   const canvasRef = useRef<HTMLDivElement | null>(null);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [isExportingPages2425, setIsExportingPages2425] = useState(false);
   const [dragState, setDragState] = useState<{
     nodeId: string;
     offsetX: number;
@@ -227,6 +235,175 @@ export default function SldBuilder({
   }
 
   const isWireMode = session.tool_settings.tool_mode === "connect";
+
+  function normalizeSldSession(input: unknown): SldSessionState | null {
+    const root = input as Record<string, unknown>;
+
+    const candidate =
+      root && typeof root === "object" && root.interfaces && typeof root.interfaces === "object"
+        ? (root.interfaces as Record<string, unknown>).single_line_diagram_builder
+        : input;
+
+    if (!candidate || typeof candidate !== "object") return null;
+    const source = candidate as Record<string, unknown>;
+
+    const rawNodes = Array.isArray(source.nodes) ? source.nodes : [];
+    const rawEdges = Array.isArray(source.edges) ? source.edges : [];
+
+    const nodes: SldSessionState["nodes"] = [];
+    for (const node of rawNodes) {
+      if (!node || typeof node !== "object") continue;
+      const value = node as Record<string, unknown>;
+      if (
+        typeof value.id !== "string" ||
+        typeof value.symbol_type !== "string" ||
+        typeof value.label !== "string" ||
+        typeof value.x !== "number" ||
+        typeof value.y !== "number"
+      ) {
+        continue;
+      }
+
+      const terminals: SldSessionState["nodes"][number]["terminals"] = [];
+      if (Array.isArray(value.terminals)) {
+        for (const terminal of value.terminals) {
+          if (!terminal || typeof terminal !== "object") continue;
+          const next = terminal as Record<string, unknown>;
+          if (
+            typeof next.id !== "string" ||
+            typeof next.x !== "number" ||
+            typeof next.y !== "number" ||
+            (next.role !== "line" && next.role !== "in" && next.role !== "out")
+          ) {
+            continue;
+          }
+
+          terminals.push({
+            id: next.id,
+            x: next.x,
+            y: next.y,
+            role: next.role,
+          });
+        }
+      }
+
+      nodes.push({
+        id: value.id,
+        symbol_type: value.symbol_type,
+        label: value.label,
+        x: value.x,
+        y: value.y,
+        rotation_deg: typeof value.rotation_deg === "number" ? value.rotation_deg : 0,
+        terminals,
+        metadata: value.metadata as Record<string, unknown> | undefined,
+      });
+    }
+
+    const edges: SldSessionState["edges"] = [];
+    for (const edge of rawEdges) {
+      if (!edge || typeof edge !== "object") continue;
+      const value = edge as Record<string, unknown>;
+      if (
+        typeof value.id !== "string" ||
+        typeof value.from_node_id !== "string" ||
+        typeof value.from_terminal_id !== "string" ||
+        typeof value.to_node_id !== "string" ||
+        typeof value.to_terminal_id !== "string"
+      ) {
+        continue;
+      }
+
+      const points: number[][] = [];
+      if (Array.isArray(value.points)) {
+        for (const point of value.points) {
+          if (Array.isArray(point) && point.length >= 2 && typeof point[0] === "number" && typeof point[1] === "number") {
+            points.push([point[0], point[1]]);
+          }
+        }
+      }
+
+      edges.push({
+        id: value.id,
+        from_node_id: value.from_node_id,
+        from_terminal_id: value.from_terminal_id,
+        to_node_id: value.to_node_id,
+        to_terminal_id: value.to_terminal_id,
+        points,
+        metadata: value.metadata as Record<string, unknown> | undefined,
+      });
+    }
+
+    const rawToolSettings =
+      source.tool_settings && typeof source.tool_settings === "object"
+        ? (source.tool_settings as Record<string, unknown>)
+        : {};
+
+    const rawViewport =
+      rawToolSettings.viewport && typeof rawToolSettings.viewport === "object"
+        ? (rawToolSettings.viewport as Record<string, unknown>)
+        : {};
+
+    const rawPos =
+      rawViewport.pos && typeof rawViewport.pos === "object"
+        ? (rawViewport.pos as Record<string, unknown>)
+        : {};
+
+    const toolMode =
+      rawToolSettings.tool_mode === "select" || rawToolSettings.tool_mode === "pan" || rawToolSettings.tool_mode === "connect"
+        ? rawToolSettings.tool_mode
+        : "select";
+
+    return {
+      schema_version: "sld-v1",
+      nodes,
+      edges,
+      tool_settings: {
+        tool_mode: toolMode,
+        viewport: {
+          scale: typeof rawViewport.scale === "number" ? rawViewport.scale : 1,
+          pos: {
+            x: typeof rawPos.x === "number" ? rawPos.x : 0,
+            y: typeof rawPos.y === "number" ? rawPos.y : 0,
+          },
+        },
+      },
+    };
+  }
+
+  async function handleImportSldFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.currentTarget.value = "";
+    if (!file) return;
+
+    try {
+      const raw = await file.text();
+      const parsed = JSON.parse(raw) as unknown;
+      const normalized = normalizeSldSession(parsed);
+
+      if (!normalized) {
+        setImportError("Invalid SLD JSON format.");
+        return;
+      }
+
+      onLoadSession(normalized);
+      setImportError(null);
+    } catch {
+      setImportError("Failed to import SLD JSON.");
+    }
+  }
+
+  async function handleExportPages2425() {
+    setIsExportingPages2425(true);
+    setExportError(null);
+    try {
+      await onExportPages2425();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to export pages 24/25.";
+      setExportError(message);
+    } finally {
+      setIsExportingPages2425(false);
+    }
+  }
 
   return (
     <div style={{ display: "flex", height: "100%", background: "#f8fafc", minWidth: 0 }}>
@@ -383,6 +560,23 @@ export default function SldBuilder({
           <button style={TOOL_BUTTON_STYLE} onClick={onClearAll}>
             Clear Canvas
           </button>
+          <button
+            style={TOOL_BUTTON_STYLE}
+            onClick={() => void handleExportPages2425()}
+            disabled={isExportingPages2425}
+          >
+            {isExportingPages2425 ? "Generating 24/25..." : "Generate Pages 24/25 (DXF)"}
+          </button>
+          <button style={TOOL_BUTTON_STYLE} onClick={() => importInputRef.current?.click()}>
+            Import SLD JSON
+          </button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".json,application/json"
+            style={{ display: "none" }}
+            onChange={(e) => void handleImportSldFile(e)}
+          />
           <div
             style={{
               alignSelf: "center",
@@ -400,6 +594,38 @@ export default function SldBuilder({
             Nodes: {session.nodes.length} · Edges: {session.edges.length}
           </div>
         </div>
+
+        {importError && (
+          <div
+            style={{
+              margin: "8px 12px",
+              padding: "8px 10px",
+              fontSize: 12,
+              borderRadius: 6,
+              border: "1px solid #fecaca",
+              background: "#fef2f2",
+              color: "#7f1d1d",
+            }}
+          >
+            {importError}
+          </div>
+        )}
+
+        {exportError && (
+          <div
+            style={{
+              margin: "8px 12px",
+              padding: "8px 10px",
+              fontSize: 12,
+              borderRadius: 6,
+              border: "1px solid #fecaca",
+              background: "#fef2f2",
+              color: "#7f1d1d",
+            }}
+          >
+            {exportError}
+          </div>
+        )}
 
         <div
           ref={canvasRef}
