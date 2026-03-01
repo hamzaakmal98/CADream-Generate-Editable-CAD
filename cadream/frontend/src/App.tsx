@@ -501,7 +501,6 @@ export default function App() {
             onBeginOrCompleteConnection={sldEditor.beginOrCompleteConnection}
             onAddWireDraftCorner={sldEditor.addWireDraftCorner}
             onUpdateWireDraftCursor={sldEditor.updateWireDraftCursor}
-            onBeginReconnect={sldEditor.beginReconnect}
             onCancelDrafts={sldEditor.cancelDrafts}
             onClearAll={sldEditor.clearAll}
           />
