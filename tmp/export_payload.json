@@ -1,0 +1,46 @@
+{
+    "source_token":  "4c1311ca6caca381856d6329cb2ef54d794ef50a01bdb11fb8c9ae5b789dfc1e",
+    "source_file_name":  "live-export-check",
+    "site_placements":  {
+                            "schema_version":  "v1",
+                            "entities":  {
+                                             "bess":  [
+                                                          {
+                                                              "label":  "BESS-1",
+                                                              "id":  1,
+                                                              "cad_position":  {
+                                                                                   "y":  10,
+                                                                                   "x":  10
+                                                                               },
+                                                              "cad_insert":  {
+                                                                                 "yscale":  1,
+                                                                                 "xscale":  1,
+                                                                                 "rotation":  0,
+                                                                                 "block_name":  null
+                                                                             }
+                                                          }
+                                                      ],
+                                             "cable_paths":  [
+                                                                 {
+                                                                     "from_bess_id":  1,
+                                                                     "to_poi":  false,
+                                                                     "id":  1,
+                                                                     "to_bess_id":  null,
+                                                                     "points":  [
+                                                                                    [
+                                                                                        10,
+                                                                                        10
+                                                                                    ],
+                                                                                    [
+                                                                                        40,
+                                                                                        10
+                                                                                    ]
+                                                                                ]
+                                                                 }
+                                                             ],
+                                             "poi":  null
+                                         },
+                            "source_dxf_filename":  "Input_Sample_0.dxf",
+                            "coordinate_space":  "cad_world"
+                        }
+}
