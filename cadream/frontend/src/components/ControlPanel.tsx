@@ -107,20 +107,20 @@ export default function ControlPanel({
 
       <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
         <button style={BUTTON_STYLE} onClick={onSaveProject}>
-          Save Project
+          Save CADream Project
         </button>
         <button
           style={BUTTON_STYLE}
           onClick={() => loadProjectInputRef.current?.click()}
         >
-          Load Project
+          Load CADream Project
         </button>
         <button
           style={BUTTON_STYLE}
           disabled={!canExportDxf}
           onClick={onExportDxf}
         >
-          Export DXF
+          Export Editable DXF
         </button>
       </div>
 
