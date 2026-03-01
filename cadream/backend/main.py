@@ -4,6 +4,7 @@ from fastapi.responses import Response
 from cad_parser import dxf_to_render_json, extract_blocks, load_dxf_from_bytes
 from cad_export import export_dxf_from_cad_ir, export_dxf_from_source_bytes
 from cad_ir_validation import validate_cad_ir_payload
+from planset_manifest import build_plan_set_manifest
 import hashlib
 
 SOURCE_DXF_CACHE: dict[str, bytes] = {}
@@ -90,3 +91,12 @@ async def validate_cad_ir(payload: dict):
         return result
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"CAD IR validation failed: {repr(e)}")
+
+
+@app.post("/planset/preview")
+async def preview_plan_set(payload: dict):
+    try:
+        manifest = build_plan_set_manifest(payload)
+        return manifest
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Plan-set preview failed: {repr(e)}")
