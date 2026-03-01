@@ -7,6 +7,16 @@ SITE_PLAN_AUTO_PAGES = [1, 2, 4, 5, 6, 7, 12, 13, 16, 17, 42, 43]
 SLD_AUTO_PAGES = [24, 25]
 
 
+def _has_cad_ir_input(cad_ir: Any) -> tuple[bool, list[str]]:
+    if not isinstance(cad_ir, dict):
+        return False, ["cad_ir payload missing"]
+
+    if cad_ir.get("schemaVersion") != "cad-ir-v1":
+        return False, ["cad_ir.schemaVersion must be cad-ir-v1"]
+
+    return True, []
+
+
 def _has_site_inputs(site_placements: Any) -> tuple[bool, list[str]]:
     reasons: list[str] = []
 
@@ -59,6 +69,7 @@ def build_plan_set_manifest(payload: dict[str, Any]) -> dict[str, Any]:
     total_pages_raw = payload.get("total_pages")
     total_pages = int(total_pages_raw) if isinstance(total_pages_raw, int) and total_pages_raw > 0 else 43
 
+    cad_ir_ready, cad_ir_reasons = _has_cad_ir_input(payload.get("cad_ir"))
     site_ready, site_reasons = _has_site_inputs(payload.get("site_placements"))
     sld_ready, sld_reasons = _has_sld_inputs(payload.get("sld_session"))
 
@@ -74,14 +85,17 @@ def build_plan_set_manifest(payload: dict[str, Any]) -> dict[str, Any]:
                 {
                     "page_number": page_number,
                     "generation_mode": "fixed",
-                    "status": "template",
+                    "status": "fixed",
                     "requirements": [],
                 }
             )
             continue
 
-        requirements: list[str] = []
+        requirements = ["cad_ir"]
         reasons: list[str] = []
+
+        if not cad_ir_ready:
+            reasons.extend(cad_ir_reasons)
 
         if page_number in site_page_set:
             requirements.append("site_plan")
@@ -93,7 +107,7 @@ def build_plan_set_manifest(payload: dict[str, Any]) -> dict[str, Any]:
             if not sld_ready:
                 reasons.extend(sld_reasons)
 
-        status = "ready" if len(reasons) == 0 else "missing_inputs"
+        status = "auto" if len(reasons) == 0 else "pending"
 
         pages.append(
             {
@@ -105,16 +119,31 @@ def build_plan_set_manifest(payload: dict[str, Any]) -> dict[str, Any]:
             }
         )
 
-    auto_pages = [page for page in pages if page["generation_mode"] == "auto"]
-    ready_auto_pages = [page for page in auto_pages if page["status"] == "ready"]
+    auto_pages = [page for page in pages if page["status"] == "auto"]
+    pending_pages = [page for page in pages if page["status"] == "pending"]
+    fixed_pages = [page for page in pages if page["status"] == "fixed"]
 
     return {
         "schema_version": "planset-manifest-v1",
         "summary": {
             "total_pages": total_pages,
             "auto_pages": len(auto_pages),
-            "ready_auto_pages": len(ready_auto_pages),
-            "fixed_pages": total_pages - len(auto_pages),
+            "fixed_pages": len(fixed_pages),
+            "pending_pages": len(pending_pages),
+        },
+        "input_status": {
+            "cad_ir": {
+                "ready": cad_ir_ready,
+                "missing_reasons": cad_ir_reasons,
+            },
+            "site_plan": {
+                "ready": site_ready,
+                "missing_reasons": site_reasons,
+            },
+            "sld": {
+                "ready": sld_ready,
+                "missing_reasons": sld_reasons,
+            },
         },
         "pages": pages,
     }

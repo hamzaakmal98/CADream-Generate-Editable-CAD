@@ -1,2 +1,6 @@
 hackathon_assignment_extracted.txt
 docs/HACKATHON_DELIVERABLES_ROADMAP.md
+
+**/__pycache__/
+*.pyc
+

@@ -5,6 +5,7 @@ from cad_parser import dxf_to_render_json, extract_blocks, load_dxf_from_bytes
 from cad_export import export_dxf_from_cad_ir, export_dxf_from_source_bytes
 from cad_ir_validation import validate_cad_ir_payload
 from planset_manifest import build_plan_set_manifest
+from planset_payload_stubs import build_plan_set_payload_stubs
 import hashlib
 
 SOURCE_DXF_CACHE: dict[str, bytes] = {}
@@ -100,3 +101,12 @@ async def preview_plan_set(payload: dict):
         return manifest
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Plan-set preview failed: {repr(e)}")
+
+
+@app.post("/planset/payload-stubs")
+async def preview_plan_set_payload_stubs(payload: dict):
+    try:
+        result = build_plan_set_payload_stubs(payload)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Plan-set payload stub preview failed: {repr(e)}")

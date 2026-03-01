@@ -392,6 +392,9 @@ export default function App() {
             bessMarkerSize={bessMarkerSize}
             poiMarkerSize={poiMarkerSize}
             bessSizeFactor={bessSizeFactor}
+            cadIr={cadIr}
+            sitePlacementPayload={sitePlacementPayload}
+            sldSession={sldEditor.session}
             cadIrValidationState={cadIrValidationState}
             canExportDxf={cadIr !== null}
             onDismissValidation={() => setCadIrValidationState(null)}
