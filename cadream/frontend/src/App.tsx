@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type Konva from "konva";
-import CadCanvas from "./components/CadCanvas";
-import ControlPanel from "./components/ControlPanel";
 import SldBuilder from "./components/sld/SldBuilder";
+import InteractiveSitePlanWorkspace from "./components/siteplan/InteractiveSitePlanWorkspace";
 import { SIDEBAR_WIDTH } from "./constants/ui";
 import { useBessEditing } from "./hooks/useBessEditing";
 import { useCableRouting } from "./hooks/useCableRouting";
@@ -606,138 +605,55 @@ export default function App() {
 
       <div style={{ flex: 1, position: "relative" }}>
         {activeInterface === "interactive-site-plan" ? (
-          <div style={{ display: "flex", height: "100%" }}>
-            <ControlPanel
-              doc={doc}
-              hiddenLayers={hiddenLayers}
-              toolMode={toolMode}
-              selectedBessId={selectedBessId}
-              bessPlacements={bessPlacements}
-              selectedCableId={selectedCableId}
-              cablePaths={cablePaths}
-              draftCablePoints={draftCablePoints}
-              hasPoi={poi !== null}
-              bessSizeFactor={bessSizeFactor}
-              onUpload={onUpload}
-              onFitToDrawing={() => {
-                if (!doc) return;
-                const fitBounds = getBestFitBounds(doc);
-                if (fitBounds) fitToBounds(fitBounds);
-              }}
-              onToggleLayer={toggleLayer}
-              onSetToolMode={setToolMode}
-              onDeleteSelectedBess={deleteSelectedBess}
-              onClearBess={clearBess}
-              onFinishCable={finishCableDraft}
-              onCancelCableDraft={cancelCableDraft}
-              onDeleteSelectedCable={deleteSelectedCable}
-              onClearCables={clearCables}
-              onClearPoi={() => setPoi(null)}
-              onSetBessSizeFactor={setBessSizeFactor}
-              onSaveProject={onSaveProject}
-              onLoadProject={onLoadProject}
-              onExportDxf={onExportDxf}
-              canExportDxf={cadIr !== null}
-            />
-
-            <div
-              style={{
-                position: "absolute",
-                right: 10,
-                top: 10,
-                background: "white",
-                padding: 6,
-                border: "1px solid #ddd",
-                fontSize: 12,
-              }}
-            >
-              {doc
-                ? `Entities: ${doc.entities.length} | BESS: ${bessPlacements.length} | POI: ${poi ? "set" : "none"} | Cables: ${cablePaths.length}`
-                : "No DXF loaded"}
-            </div>
-
-            {cadIrValidationState && (
-              <div
-                style={{
-                  position: "absolute",
-                  right: 10,
-                  top: 52,
-                  maxWidth: 420,
-                  background:
-                    cadIrValidationState.level === "error"
-                      ? "#fef2f2"
-                      : cadIrValidationState.level === "warning"
-                      ? "#fffbeb"
-                      : "#ecfdf5",
-                  border:
-                    cadIrValidationState.level === "error"
-                      ? "1px solid #fecaca"
-                      : cadIrValidationState.level === "warning"
-                      ? "1px solid #fde68a"
-                      : "1px solid #a7f3d0",
-                  color:
-                    cadIrValidationState.level === "error"
-                      ? "#7f1d1d"
-                      : cadIrValidationState.level === "warning"
-                      ? "#78350f"
-                      : "#14532d",
-                  padding: 10,
-                  borderRadius: 8,
-                  fontSize: 12,
-                  zIndex: 20,
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                  <strong>{cadIrValidationState.title}</strong>
-                  <button
-                    style={{
-                      border: "1px solid #cbd5e1",
-                      background: "#fff",
-                      borderRadius: 4,
-                      fontSize: 11,
-                      padding: "2px 6px",
-                      cursor: "pointer",
-                    }}
-                    onClick={() => setCadIrValidationState(null)}
-                  >
-                    Dismiss
-                  </button>
-                </div>
-                <ul style={{ margin: "8px 0 0", paddingLeft: 16 }}>
-                  {cadIrValidationState.messages.map((message, index) => (
-                    <li key={`${cadIrValidationState.title}-${index}`}>{message}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <CadCanvas
-              stageRef={stageRef}
-              stageSize={stageSize}
-              pos={pos}
-              scale={scale}
-              toolMode={toolMode}
-              visibleEntities={visibleEntities}
-              hiddenLayers={hiddenLayers}
-              doc={doc}
-              bessPlacements={bessPlacements}
-              cablePaths={cablePaths}
-              draftCablePoints={draftCablePoints}
-              poi={poi}
-              selectedCableId={selectedCableId}
-              selectedBessId={selectedBessId}
-              bessMarkerSize={bessMarkerSize}
-              poiMarkerSize={poiMarkerSize}
-              onWheel={onWheel}
-              onStageMouseDown={onStageMouseDown}
-              onStageDragMove={onStageDragMove}
-              onStageDragEnd={onStageDragEnd}
-              onSetSelectedBessId={setSelectedBessId}
-              onSetSelectedCableId={setSelectedCableId}
-              onUpdateSelectedCableStart={updateSelectedCableStart}
-              onSetBessPlacements={setBessPlacements}
-            />
-          </div>
+          <InteractiveSitePlanWorkspace
+            stageRef={stageRef}
+            stageSize={stageSize}
+            pos={pos}
+            scale={scale}
+            toolMode={toolMode}
+            visibleEntities={visibleEntities}
+            hiddenLayers={hiddenLayers}
+            doc={doc}
+            bessPlacements={bessPlacements}
+            cablePaths={cablePaths}
+            draftCablePoints={draftCablePoints}
+            poi={poi}
+            selectedCableId={selectedCableId}
+            selectedBessId={selectedBessId}
+            bessMarkerSize={bessMarkerSize}
+            poiMarkerSize={poiMarkerSize}
+            bessSizeFactor={bessSizeFactor}
+            cadIrValidationState={cadIrValidationState}
+            canExportDxf={cadIr !== null}
+            onDismissValidation={() => setCadIrValidationState(null)}
+            onUpload={onUpload}
+            onFitToDrawing={() => {
+              if (!doc) return;
+              const fitBounds = getBestFitBounds(doc);
+              if (fitBounds) fitToBounds(fitBounds);
+            }}
+            onToggleLayer={toggleLayer}
+            onSetToolMode={setToolMode}
+            onDeleteSelectedBess={deleteSelectedBess}
+            onClearBess={clearBess}
+            onFinishCable={finishCableDraft}
+            onCancelCableDraft={cancelCableDraft}
+            onDeleteSelectedCable={deleteSelectedCable}
+            onClearCables={clearCables}
+            onClearPoi={() => setPoi(null)}
+            onSetBessSizeFactor={setBessSizeFactor}
+            onSaveProject={onSaveProject}
+            onLoadProject={onLoadProject}
+            onExportDxf={onExportDxf}
+            onWheel={onWheel}
+            onStageMouseDown={onStageMouseDown}
+            onStageDragMove={onStageDragMove}
+            onStageDragEnd={onStageDragEnd}
+            onSetSelectedBessId={setSelectedBessId}
+            onSetSelectedCableId={setSelectedCableId}
+            onUpdateSelectedCableStart={updateSelectedCableStart}
+            onSetBessPlacements={setBessPlacements}
+          />
         ) : (
           <SldBuilder
             session={sldEditor.session}
