@@ -102,7 +102,7 @@ export default function ControlPanel({
         disabled={!doc?.bounds}
         onClick={onFitToDrawing}
       >
-        Fit to drawing
+        Fit to Drawing
       </button>
 
       <div style={{ display: "flex", gap: 6, marginTop: 8 }}>

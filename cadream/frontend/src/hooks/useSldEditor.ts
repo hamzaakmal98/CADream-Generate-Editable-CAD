@@ -59,12 +59,24 @@ function rerouteEdges(edges: SldEdge[], nodes: SldNode[]): SldEdge[] {
 
 export function useSldEditor() {
   const [session, setSession] = useState<SldSessionState>(defaultSldSession);
+  const [undoStack, setUndoStack] = useState<SldSessionState[]>([]);
+  const [redoStack, setRedoStack] = useState<SldSessionState[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [wireDraft, setWireDraft] = useState<SldWireDraft | null>(null);
   const [reconnectDraft, setReconnectDraft] = useState<SldReconnectDraft | null>(null);
 
   const issues = useMemo(() => validateSldSession(session), [session]);
+
+  function commitSession(updater: (prev: SldSessionState) => SldSessionState) {
+    setSession((prev) => {
+      const next = updater(prev);
+      if (next === prev) return prev;
+      setUndoStack((history) => [...history.slice(-99), prev]);
+      setRedoStack([]);
+      return next;
+    });
+  }
 
   function setToolMode(mode: SldToolMode) {
     setSession((prev) => ({
@@ -80,10 +92,40 @@ export function useSldEditor() {
 
   function loadSession(next: SldSessionState) {
     setSession(next);
+    setUndoStack([]);
+    setRedoStack([]);
     setSelectedNodeId(null);
     setSelectedEdgeId(null);
     setWireDraft(null);
     setReconnectDraft(null);
+  }
+
+  function undo() {
+    setUndoStack((history) => {
+      if (history.length === 0) return history;
+      const previous = history[history.length - 1];
+      setRedoStack((redo) => [...redo.slice(-99), session]);
+      setSession(previous);
+      setWireDraft(null);
+      setReconnectDraft(null);
+      setSelectedNodeId(null);
+      setSelectedEdgeId(null);
+      return history.slice(0, -1);
+    });
+  }
+
+  function redo() {
+    setRedoStack((history) => {
+      if (history.length === 0) return history;
+      const next = history[history.length - 1];
+      setUndoStack((undoHistory) => [...undoHistory.slice(-99), session]);
+      setSession(next);
+      setWireDraft(null);
+      setReconnectDraft(null);
+      setSelectedNodeId(null);
+      setSelectedEdgeId(null);
+      return history.slice(0, -1);
+    });
   }
 
   function absoluteTerminalPoint(node: SldNode, terminalId: string): number[] | null {
@@ -96,7 +138,7 @@ export function useSldEditor() {
     const symbol = getSldSymbolDefinition(symbolType);
     if (!symbol) return;
 
-    setSession((prev) => {
+    commitSession((prev) => {
       const nextCounter = computeNextCounter(prev.nodes.map((node) => node.id), "node");
       const nodeId = makeDeterministicId("node", nextCounter);
 
@@ -127,7 +169,7 @@ export function useSldEditor() {
   }
 
   function moveNode(nodeId: string, x: number, y: number) {
-    setSession((prev) => {
+    commitSession((prev) => {
       const nodes = prev.nodes.map((node) => (node.id === nodeId ? { ...node, x, y } : node));
       const edges = rerouteEdges(prev.edges, nodes);
       return { ...prev, nodes, edges };
@@ -146,7 +188,7 @@ export function useSldEditor() {
 
   function deleteSelection() {
     if (selectedNodeId) {
-      setSession((prev) => {
+      commitSession((prev) => {
         const nodes = prev.nodes.filter((node) => node.id !== selectedNodeId);
         const edges = prev.edges.filter(
           (edge) => edge.from_node_id !== selectedNodeId && edge.to_node_id !== selectedNodeId
@@ -158,7 +200,7 @@ export function useSldEditor() {
     }
 
     if (selectedEdgeId) {
-      setSession((prev) => ({
+      commitSession((prev) => ({
         ...prev,
         edges: prev.edges.filter((edge) => edge.id !== selectedEdgeId),
       }));
@@ -167,7 +209,11 @@ export function useSldEditor() {
   }
 
   function clearAll() {
-    loadSession(defaultSldSession());
+    commitSession(() => defaultSldSession());
+    setSelectedNodeId(null);
+    setSelectedEdgeId(null);
+    setWireDraft(null);
+    setReconnectDraft(null);
   }
 
   function updateWireDraftCursor(point: number[] | null) {
@@ -191,7 +237,7 @@ export function useSldEditor() {
     if (!node) return;
 
     if (reconnectDraft) {
-      setSession((prev) => {
+      commitSession((prev) => {
         const edge = prev.edges.find((item) => item.id === reconnectDraft.edgeId);
         if (!edge) return prev;
 
@@ -275,7 +321,7 @@ export function useSldEditor() {
       return;
     }
 
-    setSession((prev) => {
+    commitSession((prev) => {
       const nextCounter = computeNextCounter(prev.edges.map((edge) => edge.id), "edge");
       const edgeId = makeDeterministicId("edge", nextCounter);
 
@@ -317,8 +363,12 @@ export function useSldEditor() {
     wireDraft,
     reconnectDraft,
     issues,
+    canUndo: undoStack.length > 0,
+    canRedo: redoStack.length > 0,
     setToolMode,
     loadSession,
+    undo,
+    redo,
     addNode,
     moveNode,
     selectNode,
