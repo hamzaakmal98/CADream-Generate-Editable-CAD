@@ -43,6 +43,8 @@ type ControlPanelProps = {
   onSetBessSizeFactor: (value: number) => void;
   onSaveProject: () => void;
   onLoadProject: (file: File) => void;
+  onExportDxf: () => void;
+  canExportDxf: boolean;
 };
 
 export default function ControlPanel({
@@ -70,6 +72,8 @@ export default function ControlPanel({
   onSetBessSizeFactor,
   onSaveProject,
   onLoadProject,
+  onExportDxf,
+  canExportDxf,
 }: ControlPanelProps) {
   const loadProjectInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -110,6 +114,13 @@ export default function ControlPanel({
           onClick={() => loadProjectInputRef.current?.click()}
         >
           Load Project
+        </button>
+        <button
+          style={BUTTON_STYLE}
+          disabled={!canExportDxf}
+          onClick={onExportDxf}
+        >
+          Export DXF
         </button>
       </div>
 

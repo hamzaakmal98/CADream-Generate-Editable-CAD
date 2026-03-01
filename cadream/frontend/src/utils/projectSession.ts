@@ -13,16 +13,16 @@ import type {
   SldTerminal,
   ToolMode,
 } from "../types/cad";
+import type { CadIrDrawing } from "../types/cadIr";
 
 export function pickSuggestedBessBlockName(doc: RenderDoc | null) {
   const blockNames = Object.keys(doc?.blocks ?? {});
   if (blockNames.length === 0) return null;
 
-  const byKeyword = blockNames.find((name) => /bess|battery|enclosure|container/i.test(name));
+  const byKeyword = blockNames.find((name) => /\bbess\b|battery|enclosure|container/i.test(name));
   if (byKeyword) return byKeyword;
 
-  const nonAnonymous = blockNames.find((name) => !name.startsWith("*"));
-  return nonAnonymous ?? blockNames[0] ?? null;
+  return null;
 }
 
 export function isToolMode(value: unknown): value is ToolMode {
@@ -106,6 +106,7 @@ type SldDefaults = {
 
 type SitePlanSnapshotInput = {
   sourceDxfName: string | null;
+  cadIr?: CadIrDrawing | null;
   bessPlacements: BessPlacement[];
   poi: PointOfInterconnection | null;
   cablePaths: CablePath[];
@@ -119,6 +120,7 @@ type SitePlanSnapshotInput = {
 
 export type LoadedSitePlanSession = {
   sourceDxfName: string | null;
+  cadIr: CadIrDrawing | null;
   bessPlacements: BessPlacement[];
   poi: PointOfInterconnection | null;
   cablePaths: CablePath[];
@@ -133,6 +135,13 @@ export type LoadedProjectSession = {
   sitePlan: LoadedSitePlanSession;
   sldSession: SldSessionState;
 };
+
+function normalizeCadIr(value: unknown): CadIrDrawing | null {
+  if (!value || typeof value !== "object") return null;
+  const next = value as Partial<CadIrDrawing>;
+  if (next.schemaVersion !== "cad-ir-v1") return null;
+  return next as CadIrDrawing;
+}
 
 function isSldToolMode(value: unknown): value is SldToolMode {
   return value === "select" || value === "pan" || value === "connect";
@@ -304,8 +313,11 @@ function normalizeSitePlanSession(
       ? sitePlan.source_dxf_filename
       : null;
 
+  const cadIr = normalizeCadIr(sitePlan?.cad_ir);
+
   return {
     sourceDxfName,
+    cadIr,
     bessPlacements: nextBess,
     poi: nextPoi,
     cablePaths: nextCables,
@@ -323,6 +335,7 @@ export function createProjectSessionV2(input: SitePlanSnapshotInput): ProjectSes
     interfaces: {
       interactive_site_plan: {
         source_dxf_filename: input.sourceDxfName,
+        cad_ir: input.cadIr ?? null,
         entities: {
           bess: input.bessPlacements,
           poi: input.poi,
