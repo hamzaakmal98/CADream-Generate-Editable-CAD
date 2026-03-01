@@ -1,4 +1,4 @@
-import { Circle, FastLayer, Group, Layer, Line, Stage, Text } from "react-konva";
+import { Circle, Group, Layer, Line, Stage, Text } from "react-konva";
 import type Konva from "konva";
 import { useMemo } from "react";
 import type { Dispatch, RefObject, SetStateAction } from "react";
@@ -25,6 +25,8 @@ import {
   transformBounds,
   transformPoint,
 } from "../utils/cadGeometry";
+import { buildCadScene } from "../renderers/cad/sceneMapper";
+import { PIXI_CAD_RENDERER } from "../renderers/cad";
 
 type CadCanvasProps = {
   stageRef: RefObject<Konva.Stage | null>;
@@ -77,25 +79,11 @@ export default function CadCanvas({
   onUpdateSelectedCableStart,
   onSetBessPlacements,
 }: CadCanvasProps) {
-  const staticLineProps = { listening: false, perfectDrawEnabled: false } as const;
+  const StaticRenderer = PIXI_CAD_RENDERER.Component;
   const safeScale = Math.max(scale, 0.0001);
 
   function toCanvasPoints(points: number[][]) {
     return points.flatMap((point) => [point[0], -point[1]]);
-  }
-
-  function circlePolylinePoints(center: number[], radius: number, segments: number) {
-    return toCanvasPoints(arcPoints(center[0], center[1], radius, 0, 360, segments));
-  }
-
-  function arcPolylinePoints(
-    center: number[],
-    radius: number,
-    startAngle: number,
-    endAngle: number,
-    segments: number
-  ) {
-    return toCanvasPoints(arcPoints(center[0], center[1], radius, startAngle, endAngle, segments));
   }
 
   const selectedCable = cablePaths.find((c) => c.id === selectedCableId) ?? null;
@@ -109,6 +97,18 @@ export default function CadCanvas({
   );
   const arcPixelsPerSegment = isHeavyScene ? 20 : 10;
   const arcMaxSegments = isHeavyScene ? 128 : 512;
+  const staticScene = useMemo(
+    () =>
+      buildCadScene({
+        entities: visibleEntities,
+        doc,
+        hiddenLayers,
+        scale,
+        arcPixelsPerSegment,
+        arcMaxSegments,
+      }),
+    [visibleEntities, doc, hiddenLayers, scale, arcPixelsPerSegment, arcMaxSegments]
+  );
   const blockBoundsByName = useMemo(() => {
     const blocks = doc?.blocks;
     if (!blocks) return {} as Record<string, Bounds2D>;
@@ -208,7 +208,8 @@ export default function CadCanvas({
                 points={[p1[0], -p1[1], p2[0], -p2[1]]}
                 stroke="black"
                 strokeWidth={1 / scale}
-                {...staticLineProps}
+                listening={false}
+                perfectDrawEnabled={false}
               />
             );
           }
@@ -226,30 +227,27 @@ export default function CadCanvas({
                 stroke="black"
                 strokeWidth={1 / scale}
                 closed={bEnt.closed}
-                {...staticLineProps}
+                listening={false}
+                perfectDrawEnabled={false}
               />
             );
           }
 
           if (bEnt.type === "CIRCLE") {
-            const segs = adaptiveCircleSegments(
-              bEnt.r * avgScale,
-              scale,
-              arcPixelsPerSegment,
-              arcMaxSegments
-            );
+            const segs = adaptiveCircleSegments(bEnt.r * avgScale, arcPixelsPerSegment, arcMaxSegments);
             const circlePts = arcPoints(bEnt.center[0], bEnt.center[1], bEnt.r, 0, 360, segs)
               .map((p) => transformPoint(p[0], p[1], xform))
               .flatMap((point) => [point[0], -point[1]]);
-
+            if (circlePts.length < 4) return null;
             return (
               <Line
                 key={`${keyPrefix}-b-${bIdx}`}
                 points={circlePts}
-                stroke="red"
+                stroke="black"
                 strokeWidth={1 / scale}
                 closed
-                {...staticLineProps}
+                listening={false}
+                perfectDrawEnabled={false}
               />
             );
           }
@@ -280,7 +278,8 @@ export default function CadCanvas({
                 points={arcPts}
                 stroke="black"
                 strokeWidth={1 / scale}
-                {...staticLineProps}
+                listening={false}
+                perfectDrawEnabled={false}
               />
             );
           }
@@ -316,7 +315,15 @@ export default function CadCanvas({
   }
 
   return (
-    <div style={{ flex: 1 }}>
+    <div style={{ flex: 1, position: "relative" }}>
+      <StaticRenderer
+        width={stageSize.w}
+        height={stageSize.h}
+        pos={pos}
+        scale={scale}
+        scene={staticScene}
+      />
+
       <Stage
         ref={stageRef}
         width={stageSize.w}
@@ -329,102 +336,8 @@ export default function CadCanvas({
         onWheel={onWheel}
         onMouseDown={onStageMouseDown}
         onDragEnd={onStageDragEnd}
+        style={{ position: "absolute", inset: 0 }}
       >
-        <FastLayer listening={false}>
-          {visibleEntities.map((ent, idx) => {
-            if (ent.type === "INSERT" && !isInsertVisible(ent)) return null;
-            if (ent.type !== "INSERT" && !isEntityVisible(ent)) return null;
-
-            if (ent.type === "LINE") {
-              return (
-                <Line
-                  key={idx}
-                  points={[ent.p1[0], -ent.p1[1], ent.p2[0], -ent.p2[1]]}
-                  stroke="black"
-                  strokeWidth={1}
-                  listening={false}
-                  perfectDrawEnabled={false}
-                />
-              );
-            }
-            if (ent.type === "LWPOLYLINE") {
-              const pts = toCanvasPoints(ent.points);
-              if (ent.closed) pts.push(ent.points[0][0], -ent.points[0][1]);
-              return (
-                <Line
-                  key={idx}
-                  points={pts}
-                  stroke="black"
-                  strokeWidth={1}
-                  closed={ent.closed}
-                  {...staticLineProps}
-                />
-              );
-            }
-            if (ent.type === "CIRCLE") {
-              const segs = adaptiveCircleSegments(
-                ent.r,
-                scale,
-                arcPixelsPerSegment,
-                arcMaxSegments
-              );
-              const circlePts = circlePolylinePoints(ent.center, ent.r, segs);
-              return (
-                <Line
-                  key={idx}
-                  points={circlePts}
-                  stroke="red"
-                  strokeWidth={1}
-                  closed
-                  {...staticLineProps}
-                />
-              );
-            }
-            if (ent.type === "ARC") {
-              const segs = adaptiveArcSegments(
-                ent.r,
-                ent.start_angle,
-                ent.end_angle,
-                scale,
-                arcPixelsPerSegment,
-                arcMaxSegments
-              );
-              const arcPts = arcPolylinePoints(
-                ent.center,
-                ent.r,
-                ent.start_angle,
-                ent.end_angle,
-                segs
-              );
-              return (
-                <Line
-                  key={idx}
-                  points={arcPts}
-                  stroke="black"
-                  strokeWidth={1}
-                  {...staticLineProps}
-                />
-              );
-            }
-            if (ent.type === "TEXT" || ent.type === "MTEXT") {
-              return (
-                <Text
-                  key={idx}
-                  x={ent.pos[0]}
-                  y={-ent.pos[1]}
-                  text={ent.text}
-                  fontSize={Math.max(8, ent.height)}
-                  listening={false}
-                />
-              );
-            }
-            if (ent.type === "INSERT") {
-              return renderInsertBlock(ent, `ins-${idx}`);
-            }
-            return null;
-          })}
-        </FastLayer>
-
         <Layer>
           {cablePaths.map((cable) => {
             const pts = toCanvasPoints(cable.points);

@@ -18,6 +18,7 @@ import {
   computeBessMarkerSize,
   estimateStructureBounds,
 } from "./utils/cadGeometry";
+import { attachSitePlanToCadIr, buildCadIrFromRenderDoc } from "./types/cadIr";
 import {
   createProjectSessionV2,
   loadProjectFromAnySession,
@@ -47,6 +48,7 @@ export default function App() {
   const [toolMode, setToolMode] = useState<ToolMode>("pan");
   const [bessSizeFactor, setBessSizeFactor] = useState(1);
   const [sourceDxfName, setSourceDxfName] = useState<string | null>(null);
+  const [cadIr, setCadIr] = useState<ReturnType<typeof buildCadIrFromRenderDoc> | null>(null);
   const [poi, setPoi] = useState<PointOfInterconnection | null>(null);
 
   const [stageSize, setStageSize] = useState({
@@ -153,9 +155,29 @@ export default function App() {
     );
   }
 
+  function buildCurrentCadIr() {
+    const baseCadIr = doc
+      ? buildCadIrFromRenderDoc({
+          doc,
+          sourceFileName: sourceDxfName,
+        })
+      : cadIr;
+
+    if (!baseCadIr) return null;
+
+    return attachSitePlanToCadIr(baseCadIr, {
+      bessPlacements,
+      poi,
+      cablePaths,
+    });
+  }
+
   function onSaveProject() {
+    const currentCadIr = buildCurrentCadIr();
+
     const session = createProjectSessionV2({
       sourceDxfName,
+      cadIr: currentCadIr,
       bessPlacements,
       poi,
       cablePaths,
@@ -179,6 +201,49 @@ export default function App() {
     URL.revokeObjectURL(url);
   }
 
+  async function onExportDxf() {
+    if (!doc?.source_token) {
+      window.alert("Please upload the source DXF in this session before exporting.");
+      return;
+    }
+
+    const exportCadIr = buildCurrentCadIr();
+
+    if (!exportCadIr) {
+      window.alert("No CAD data available to export. Upload a DXF first.");
+      return;
+    }
+
+    const res = await fetch("/api/dxf/export", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        source_token: doc.source_token,
+        site_placements: sitePlacementPayload,
+        cad_ir: exportCadIr,
+        source_file_name: sourceDxfName ?? "cadream-export",
+      }),
+    });
+
+    if (!res.ok) {
+      window.alert("DXF export failed.");
+      return;
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    const fileBase = sourceDxfName ? sourceDxfName.replace(/\.[^.]+$/, "") : "cadream-export";
+    anchor.href = url;
+    anchor.download = `${fileBase}.dxf`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
   async function onLoadProject(file: File) {
     try {
       const raw = await file.text();
@@ -195,6 +260,7 @@ export default function App() {
       }
 
       setSourceDxfName(loaded.sitePlan.sourceDxfName);
+      setCadIr(loaded.sitePlan.cadIr);
       loadBessPlacements(loaded.sitePlan.bessPlacements);
       loadCablePaths(loaded.sitePlan.cablePaths);
       setPoi(loaded.sitePlan.poi);
@@ -225,6 +291,12 @@ export default function App() {
     const fitBounds = getBestFitBounds(data);
 
     setDoc(data);
+    setCadIr(
+      buildCadIrFromRenderDoc({
+        doc: data,
+        sourceFileName: file.name,
+      })
+    );
     (window as Window & { __doc?: RenderDoc }).__doc = data;
 
     if (fitBounds) fitToBounds(fitBounds);
@@ -440,6 +512,8 @@ export default function App() {
               onSetBessSizeFactor={setBessSizeFactor}
               onSaveProject={onSaveProject}
               onLoadProject={onLoadProject}
+              onExportDxf={onExportDxf}
+              canExportDxf={cadIr !== null}
             />
 
             <div

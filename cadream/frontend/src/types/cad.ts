@@ -1,3 +1,5 @@
+import type { CadIrDrawing } from "./cadIr";
+
 export type RenderLayer = { name: string; color?: number; linetype?: string };
 
 export type RenderEntity =
@@ -34,6 +36,7 @@ export type RenderDoc = {
   entities: RenderEntity[];
   bounds: null | { min: number[]; max: number[] };
   blocks?: Record<string, RenderEntity[]>;
+  source_token?: string;
 };
 
 export type Affine2D = {
@@ -120,6 +123,7 @@ export type ProjectSessionV1 = ProjectSession;
 
 export type SitePlanSessionState = {
   source_dxf_filename: string | null;
+  cad_ir?: CadIrDrawing | null;
   entities: {
     bess: BessPlacement[];
     poi: PointOfInterconnection | null;
