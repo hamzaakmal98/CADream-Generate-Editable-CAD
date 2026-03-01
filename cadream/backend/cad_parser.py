@@ -1,4 +1,3 @@
-from collections import Counter
 from io import BytesIO
 from typing import Any
 
@@ -201,9 +200,6 @@ def dxf_to_render_json(doc: ezdxf.document.Drawing, max_entities: int = 250000) 
     bounds = _compute_bounds(preferred)
     if bounds is None:
         bounds = _compute_bounds(usable)
-
-    type_counts = Counter([entity["type"] for entity in entities])
-    print("ENTITY COUNTS:", type_counts)
 
     return {"layers": layers, "entities": entities, "bounds": bounds}
 
