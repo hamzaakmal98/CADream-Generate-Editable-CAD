@@ -3,19 +3,29 @@
   "$id": "planset-manifest-v1.schema.json",
   "title": "CADream Plan Set Manifest v1",
   "type": "object",
-  "required": ["schema_version", "summary", "pages"],
+  "required": ["schema_version", "summary", "input_status", "pages"],
   "properties": {
     "schema_version": {
       "const": "planset-manifest-v1"
     },
     "summary": {
       "type": "object",
-      "required": ["total_pages", "auto_pages", "ready_auto_pages", "fixed_pages"],
+      "required": ["total_pages", "auto_pages", "fixed_pages", "pending_pages"],
       "properties": {
         "total_pages": { "type": "integer", "minimum": 1 },
         "auto_pages": { "type": "integer", "minimum": 0 },
-        "ready_auto_pages": { "type": "integer", "minimum": 0 },
-        "fixed_pages": { "type": "integer", "minimum": 0 }
+        "fixed_pages": { "type": "integer", "minimum": 0 },
+        "pending_pages": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "input_status": {
+      "type": "object",
+      "required": ["cad_ir", "site_plan", "sld"],
+      "properties": {
+        "cad_ir": { "$ref": "#/$defs/input_gate" },
+        "site_plan": { "$ref": "#/$defs/input_gate" },
+        "sld": { "$ref": "#/$defs/input_gate" }
       },
       "additionalProperties": false
     },
@@ -32,13 +42,13 @@
           },
           "status": {
             "type": "string",
-            "enum": ["ready", "missing_inputs", "template"]
+            "enum": ["auto", "fixed", "pending"]
           },
           "requirements": {
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["site_plan", "sld"]
+              "enum": ["cad_ir", "site_plan", "sld"]
             }
           },
           "missing_reasons": {
@@ -48,6 +58,20 @@
         },
         "additionalProperties": false
       }
+    }
+  },
+  "$defs": {
+    "input_gate": {
+      "type": "object",
+      "required": ["ready", "missing_reasons"],
+      "properties": {
+        "ready": { "type": "boolean" },
+        "missing_reasons": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false
