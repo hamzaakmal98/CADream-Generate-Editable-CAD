@@ -237,15 +237,6 @@ def export_dxf_from_cad_ir(cad_ir: dict[str, Any]) -> bytes:
     return stream.getvalue().encode("utf-8")
 
 
-def _pick_existing_layer(doc: ezdxf.document.Drawing, candidates: list[str]) -> str:
-    existing = {layer.dxf.name.lower(): layer.dxf.name for layer in doc.layers}
-    for candidate in candidates:
-        found = existing.get(candidate.lower())
-        if found:
-            return found
-    return "0" if "0" in doc.layers else next(iter(existing.values()), "0")
-
-
 def _ensure_layer(doc: ezdxf.document.Drawing, layer_name: str) -> str:
     if layer_name not in doc.layers:
         doc.layers.add(layer_name)

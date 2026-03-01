@@ -47,6 +47,7 @@ type CadCanvasProps = {
   poiMarkerSize: number;
   onWheel: (e: Konva.KonvaEventObject<WheelEvent>) => void;
   onStageMouseDown: (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => void;
+  onStageDragMove: (e: Konva.KonvaEventObject<Event>) => void;
   onStageDragEnd: (e: Konva.KonvaEventObject<Event>) => void;
   onSetSelectedBessId: (id: number | null) => void;
   onSetSelectedCableId: (id: number | null) => void;
@@ -73,6 +74,7 @@ export default function CadCanvas({
   poiMarkerSize,
   onWheel,
   onStageMouseDown,
+  onStageDragMove,
   onStageDragEnd,
   onSetSelectedBessId,
   onSetSelectedCableId,
@@ -335,6 +337,7 @@ export default function CadCanvas({
         scaleY={scale}
         onWheel={onWheel}
         onMouseDown={onStageMouseDown}
+        onDragMove={onStageDragMove}
         onDragEnd={onStageDragEnd}
         style={{ position: "absolute", inset: 0 }}
       >

@@ -275,14 +275,22 @@ export default function App() {
 
   async function onExportDxf() {
     if (!doc?.source_token) {
-      window.alert("Please upload the source DXF in this session before exporting.");
+      setCadIrValidationState({
+        level: "error",
+        title: "Export Unavailable",
+        messages: ["Please upload the source DXF in this session before exporting."],
+      });
       return;
     }
 
     const exportCadIr = buildCurrentCadIr();
 
     if (!exportCadIr) {
-      window.alert("No CAD data available to export. Upload a DXF first.");
+      setCadIrValidationState({
+        level: "error",
+        title: "Export Unavailable",
+        messages: ["No CAD data available to export. Upload a DXF first."],
+      });
       return;
     }
 
@@ -528,6 +536,10 @@ export default function App() {
   function onStageDragEnd(e: Konva.KonvaEventObject<Event>) {
     setPos({ x: e.target.x(), y: e.target.y() });
   }
+
+  function onStageDragMove(e: Konva.KonvaEventObject<Event>) {
+    setPos({ x: e.target.x(), y: e.target.y() });
+  }
   
   function fitToBounds(bounds: { min: number[]; max: number[] }) {
     const [minX, minY] = bounds.min;
@@ -718,6 +730,7 @@ export default function App() {
               poiMarkerSize={poiMarkerSize}
               onWheel={onWheel}
               onStageMouseDown={onStageMouseDown}
+              onStageDragMove={onStageDragMove}
               onStageDragEnd={onStageDragEnd}
               onSetSelectedBessId={setSelectedBessId}
               onSetSelectedCableId={setSelectedCableId}
