@@ -80,7 +80,7 @@ export function arcPoints(
   endDeg: number,
   segments = 48
 ) {
-  let start = (startDeg * Math.PI) / 180;
+  const start = (startDeg * Math.PI) / 180;
   let end = (endDeg * Math.PI) / 180;
   if (end < start) end += Math.PI * 2;
 
