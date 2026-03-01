@@ -27,6 +27,12 @@ import {
 
 type InterfaceTab = "interactive-site-plan" | "single-line-diagram-builder";
 
+type CadIrValidationState = {
+  level: "error" | "warning" | "success";
+  title: string;
+  messages: string[];
+} | null;
+
 const TAB_BAR_HEIGHT = 44;
 const TAB_BUTTON_STYLE = {
   padding: "8px 12px",
@@ -50,6 +56,7 @@ export default function App() {
   const [sourceDxfName, setSourceDxfName] = useState<string | null>(null);
   const [cadIr, setCadIr] = useState<ReturnType<typeof buildCadIrFromRenderDoc> | null>(null);
   const [poi, setPoi] = useState<PointOfInterconnection | null>(null);
+  const [cadIrValidationState, setCadIrValidationState] = useState<CadIrValidationState>(null);
 
   const [stageSize, setStageSize] = useState({
     w: window.innerWidth - SIDEBAR_WIDTH,
@@ -173,16 +180,30 @@ export default function App() {
   }
 
   async function validateCadIrOrAlert(cadIrToValidate: NonNullable<ReturnType<typeof buildCurrentCadIr>>) {
-    const res = await fetch("/api/cad-ir/validate", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ cad_ir: cadIrToValidate }),
-    });
+    let res: Response;
+    try {
+      res = await fetch("/api/cad-ir/validate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ cad_ir: cadIrToValidate }),
+      });
+    } catch {
+      setCadIrValidationState({
+        level: "error",
+        title: "CAD IR Validation Service Unavailable",
+        messages: ["Could not validate CAD IR. Please ensure backend is running and try again."],
+      });
+      return false;
+    }
 
     if (!res.ok) {
-      window.alert("CAD IR validation service is unavailable.");
+      setCadIrValidationState({
+        level: "error",
+        title: "CAD IR Validation Service Unavailable",
+        messages: ["Could not validate CAD IR. Please ensure backend is running and try again."],
+      });
       return false;
     }
 
@@ -193,15 +214,28 @@ export default function App() {
     };
 
     if (!result.valid) {
-      const firstErrors = (result.errors ?? []).slice(0, 5).join("\n");
-      window.alert(`CAD IR validation failed:\n${firstErrors}`);
+      setCadIrValidationState({
+        level: "error",
+        title: "CAD IR Validation Failed",
+        messages: (result.errors ?? []).slice(0, 6),
+      });
       return false;
     }
 
     if ((result.warnings?.length ?? 0) > 0) {
-      const firstWarnings = (result.warnings ?? []).slice(0, 3).join("\n");
-      window.alert(`CAD IR validation warnings:\n${firstWarnings}`);
+      setCadIrValidationState({
+        level: "warning",
+        title: "CAD IR Validation Warnings",
+        messages: (result.warnings ?? []).slice(0, 6),
+      });
+      return true;
     }
+
+    setCadIrValidationState({
+      level: "success",
+      title: "CAD IR Validation Passed",
+      messages: ["No errors found."],
+    });
 
     return true;
   }
@@ -260,21 +294,45 @@ export default function App() {
     if (requestedName === null) return;
     const normalizedFileBase = requestedName.trim().replace(/\.[^.]+$/, "") || defaultBase;
 
-    const res = await fetch("/api/dxf/export", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        source_token: doc.source_token,
-        site_placements: sitePlacementPayload,
-        cad_ir: exportCadIr,
-        source_file_name: normalizedFileBase,
-      }),
-    });
+    let res: Response;
+    try {
+      res = await fetch("/api/dxf/export", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          source_token: doc.source_token,
+          site_placements: sitePlacementPayload,
+          cad_ir: exportCadIr,
+          source_file_name: normalizedFileBase,
+        }),
+      });
+    } catch {
+      setCadIrValidationState({
+        level: "error",
+        title: "Export Service Unavailable",
+        messages: ["Could not reach backend export service. Please ensure backend is running and try again."],
+      });
+      return;
+    }
 
     if (!res.ok) {
-      window.alert("DXF export failed.");
+      let detail = "DXF export failed.";
+      try {
+        const err = (await res.json()) as { detail?: string };
+        if (typeof err.detail === "string" && err.detail.trim()) {
+          detail = err.detail;
+        }
+      } catch {
+        // keep default message
+      }
+
+      setCadIrValidationState({
+        level: "error",
+        title: "DXF Export Failed",
+        messages: [detail],
+      });
       return;
     }
 
@@ -301,7 +359,11 @@ export default function App() {
       });
 
       if (!loaded) {
-        window.alert("Unsupported project file format.");
+        setCadIrValidationState({
+          level: "error",
+          title: "Load Failed",
+          messages: ["Unsupported project file format."],
+        });
         return;
       }
 
@@ -318,8 +380,13 @@ export default function App() {
       setSelectedBessId(null);
       setSelectedCableId(null);
       sldEditor.loadSession(loaded.sldSession);
+      setCadIrValidationState(null);
     } catch {
-      window.alert("Failed to load project JSON.");
+      setCadIrValidationState({
+        level: "error",
+        title: "Load Failed",
+        messages: ["Failed to load project JSON."],
+      });
     }
   }
 
@@ -576,6 +643,61 @@ export default function App() {
                 ? `Entities: ${doc.entities.length} | BESS: ${bessPlacements.length} | POI: ${poi ? "set" : "none"} | Cables: ${cablePaths.length}`
                 : "No DXF loaded"}
             </div>
+
+            {cadIrValidationState && (
+              <div
+                style={{
+                  position: "absolute",
+                  right: 10,
+                  top: 52,
+                  maxWidth: 420,
+                  background:
+                    cadIrValidationState.level === "error"
+                      ? "#fef2f2"
+                      : cadIrValidationState.level === "warning"
+                      ? "#fffbeb"
+                      : "#ecfdf5",
+                  border:
+                    cadIrValidationState.level === "error"
+                      ? "1px solid #fecaca"
+                      : cadIrValidationState.level === "warning"
+                      ? "1px solid #fde68a"
+                      : "1px solid #a7f3d0",
+                  color:
+                    cadIrValidationState.level === "error"
+                      ? "#7f1d1d"
+                      : cadIrValidationState.level === "warning"
+                      ? "#78350f"
+                      : "#14532d",
+                  padding: 10,
+                  borderRadius: 8,
+                  fontSize: 12,
+                  zIndex: 20,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <strong>{cadIrValidationState.title}</strong>
+                  <button
+                    style={{
+                      border: "1px solid #cbd5e1",
+                      background: "#fff",
+                      borderRadius: 4,
+                      fontSize: 11,
+                      padding: "2px 6px",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => setCadIrValidationState(null)}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+                <ul style={{ margin: "8px 0 0", paddingLeft: 16 }}>
+                  {cadIrValidationState.messages.map((message, index) => (
+                    <li key={`${cadIrValidationState.title}-${index}`}>{message}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <CadCanvas
               stageRef={stageRef}

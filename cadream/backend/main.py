@@ -59,6 +59,11 @@ async def export_dxf(payload: dict):
         if isinstance(source_token, str) and source_token in SOURCE_DXF_CACHE and isinstance(site_placements, dict):
             dxf_bytes = export_dxf_from_source_bytes(SOURCE_DXF_CACHE[source_token], site_placements)
         else:
+            if isinstance(site_placements, dict):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Source DXF is not available in backend cache. Please re-upload the DXF in this session, then export again.",
+                )
             cad_ir = payload.get("cad_ir")
             if cad_ir is None:
                 raise HTTPException(status_code=400, detail="Missing cad_ir in request body")

@@ -228,6 +228,10 @@ def export_dxf_from_cad_ir(cad_ir: dict[str, Any]) -> bytes:
         if isinstance(entity, dict):
             _add_entity_to_layout(modelspace, entity, layer_lookup, allowed_layers_lower)
 
+    site_plan = cad_ir.get("sitePlan")
+    if isinstance(site_plan, dict):
+        _append_site_plan_to_layout(doc, modelspace, site_plan)
+
     stream = StringIO()
     doc.write(stream)
     return stream.getvalue().encode("utf-8")
@@ -242,45 +246,111 @@ def _pick_existing_layer(doc: ezdxf.document.Drawing, candidates: list[str]) -> 
     return "0" if "0" in doc.layers else next(iter(existing.values()), "0")
 
 
-def export_dxf_from_source_bytes(source_bytes: bytes, site_placements: dict[str, Any]) -> bytes:
-    doc = load_dxf_from_bytes(source_bytes)
-    modelspace = doc.modelspace()
+def _ensure_layer(doc: ezdxf.document.Drawing, layer_name: str) -> str:
+    if layer_name not in doc.layers:
+        doc.layers.add(layer_name)
+    return layer_name
 
-    entities = site_placements.get("entities") if isinstance(site_placements, dict) else None
+
+def _safe_scale(value: Any) -> float:
+    try:
+        scale = float(value)
+    except (TypeError, ValueError):
+        return 1.0
+    return scale if abs(scale) > 1e-6 else 1.0
+
+
+def _ensure_generic_bess_block(doc: ezdxf.document.Drawing) -> str:
+    block_name = "CADREAM_BESS_GENERIC"
+    if block_name in doc.blocks:
+        return block_name
+
+    block = doc.blocks.new(name=block_name)
+    body = [(-15.0, -10.0), (15.0, -10.0), (15.0, 10.0), (-15.0, 10.0)]
+    poly = block.add_lwpolyline(body, dxfattribs={"layer": "0"})
+    poly.closed = True
+    block.add_line((-10.0, 0.0), (10.0, 0.0), dxfattribs={"layer": "0"})
+    block.add_line((0.0, -6.0), (0.0, 6.0), dxfattribs={"layer": "0"})
+    return block_name
+
+
+def _to_float(value: Any, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _add_bess_marker(layout: Any, x: float, y: float, layer_name: str) -> None:
+    marker_radius = 20.0
+    marker_arm = 14.0
+    marker_attribs = {"layer": layer_name, "color": 3}
+    layout.add_circle((x, y), marker_radius, dxfattribs=marker_attribs)
+    layout.add_line((x - marker_arm, y), (x + marker_arm, y), dxfattribs=marker_attribs)
+    layout.add_line((x, y - marker_arm), (x, y + marker_arm), dxfattribs=marker_attribs)
+
+
+def _append_site_plan_to_layout(
+    doc: ezdxf.document.Drawing,
+    layout: Any,
+    site_plan: dict[str, Any],
+    *,
+    bess_layer: str = "CADREAM_BESS",
+    cable_layer: str = "CADREAM_CABLE",
+) -> None:
+    if not isinstance(site_plan, dict):
+        return
+
+    entities = site_plan.get("entities")
     if not isinstance(entities, dict):
-        raise ValueError("Invalid site_placements payload")
+        return
 
-    bess_layer = _pick_existing_layer(doc, ["0", "Base Map", "Mounting Structure"])
-    cable_layer = _pick_existing_layer(doc, ["Cable Path", "AC Cable", "DC Cable", "0"])
+    _ensure_layer(doc, bess_layer)
+    _ensure_layer(doc, cable_layer)
+    if bess_layer in doc.layers:
+        doc.layers.get(bess_layer).dxf.color = 3
+    generic_bess_block = _ensure_generic_bess_block(doc)
 
     bess_items = entities.get("bess") if isinstance(entities.get("bess"), list) else []
     for bess in bess_items:
         if not isinstance(bess, dict):
             continue
 
-        pos = bess.get("cad_position")
-        ins = bess.get("cad_insert")
+        pos = bess.get("position") if isinstance(bess.get("position"), dict) else bess.get("cad_position")
         if not isinstance(pos, dict):
             continue
 
-        x = float(pos.get("x", 0.0))
-        y = float(pos.get("y", 0.0))
+        ins = bess.get("insert") if isinstance(bess.get("insert"), dict) else bess.get("cad_insert")
+        x = _to_float(pos.get("x"), 0.0)
+        y = _to_float(pos.get("y"), 0.0)
 
-        block_name = ins.get("block_name") if isinstance(ins, dict) else None
-        rotation = float(ins.get("rotation", 0.0) if isinstance(ins, dict) else 0.0)
-        xscale = float(ins.get("xscale", 1.0) if isinstance(ins, dict) else 1.0)
-        yscale = float(ins.get("yscale", 1.0) if isinstance(ins, dict) else 1.0)
+        block_name = ins.get("blockName") if isinstance(ins, dict) else None
+        if not isinstance(block_name, str) and isinstance(ins, dict):
+            block_name = ins.get("block_name")
+
+        rotation = _to_float(ins.get("rotationDeg"), 0.0) if isinstance(ins, dict) else 0.0
+        if isinstance(ins, dict) and "rotationDeg" not in ins:
+            rotation = _to_float(ins.get("rotation"), 0.0)
+
+        xscale = _safe_scale(ins.get("xScale", ins.get("xscale", 1.0)) if isinstance(ins, dict) else 1.0)
+        yscale = _safe_scale(ins.get("yScale", ins.get("yscale", 1.0)) if isinstance(ins, dict) else 1.0)
 
         if isinstance(block_name, str) and block_name in doc.blocks:
-            ref = modelspace.add_blockref(block_name, (x, y), dxfattribs={"layer": bess_layer})
+            ref = layout.add_blockref(block_name, (x, y), dxfattribs={"layer": bess_layer, "color": 3})
             ref.dxf.rotation = rotation
             ref.dxf.xscale = xscale
             ref.dxf.yscale = yscale
-        else:
-            modelspace.add_circle((x, y), 0.5, dxfattribs={"layer": bess_layer})
 
-    cable_paths = entities.get("cable_paths") if isinstance(entities.get("cable_paths"), list) else []
-    for cable in cable_paths:
+        generic_ref = layout.add_blockref(generic_bess_block, (x, y), dxfattribs={"layer": bess_layer, "color": 3})
+        generic_ref.dxf.rotation = rotation
+        generic_ref.dxf.xscale = xscale
+        generic_ref.dxf.yscale = yscale
+
+        _add_bess_marker(layout, x, y, bess_layer)
+
+    cable_paths = entities.get("cablePaths") if isinstance(entities.get("cablePaths"), list) else entities.get("cable_paths")
+    cable_items = cable_paths if isinstance(cable_paths, list) else []
+    for cable in cable_items:
         if not isinstance(cable, dict):
             continue
         points = cable.get("points")
@@ -289,11 +359,24 @@ def export_dxf_from_source_bytes(source_bytes: bytes, site_placements: dict[str,
 
         xy_points: list[tuple[float, float]] = []
         for point in points:
-            if isinstance(point, list) and len(point) >= 2:
-                xy_points.append((float(point[0]), float(point[1])))
+            if isinstance(point, dict):
+                xy_points.append((_to_float(point.get("x"), 0.0), _to_float(point.get("y"), 0.0)))
+            elif isinstance(point, list) and len(point) >= 2:
+                xy_points.append((_to_float(point[0], 0.0), _to_float(point[1], 0.0)))
 
         if len(xy_points) >= 2:
-            modelspace.add_lwpolyline(xy_points, dxfattribs={"layer": cable_layer})
+            layout.add_lwpolyline(xy_points, dxfattribs={"layer": cable_layer})
+
+
+def export_dxf_from_source_bytes(source_bytes: bytes, site_placements: dict[str, Any]) -> bytes:
+    doc = load_dxf_from_bytes(source_bytes)
+    modelspace = doc.modelspace()
+
+    entities = site_placements.get("entities") if isinstance(site_placements, dict) else None
+    if not isinstance(entities, dict):
+        raise ValueError("Invalid site_placements payload")
+
+    _append_site_plan_to_layout(doc, modelspace, {"entities": entities})
 
     stream = StringIO()
     doc.write(stream)
