@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from cad_parser import dxf_to_render_json, extract_blocks, load_dxf_from_bytes
 from cad_export import export_dxf_from_cad_ir, export_dxf_from_source_bytes
+from cad_ir_validation import validate_cad_ir_payload
 import hashlib
 
 SOURCE_DXF_CACHE: dict[str, bytes] = {}
@@ -74,3 +75,13 @@ async def export_dxf(payload: dict):
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"DXF export failed: {repr(e)}")
+
+
+@app.post("/cad-ir/validate")
+async def validate_cad_ir(payload: dict):
+    try:
+        cad_ir = payload.get("cad_ir")
+        result = validate_cad_ir_payload(cad_ir)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"CAD IR validation failed: {repr(e)}")

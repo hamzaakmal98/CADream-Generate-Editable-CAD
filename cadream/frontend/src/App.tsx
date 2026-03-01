@@ -172,8 +172,46 @@ export default function App() {
     });
   }
 
-  function onSaveProject() {
+  async function validateCadIrOrAlert(cadIrToValidate: NonNullable<ReturnType<typeof buildCurrentCadIr>>) {
+    const res = await fetch("/api/cad-ir/validate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ cad_ir: cadIrToValidate }),
+    });
+
+    if (!res.ok) {
+      window.alert("CAD IR validation service is unavailable.");
+      return false;
+    }
+
+    const result = (await res.json()) as {
+      valid: boolean;
+      errors?: string[];
+      warnings?: string[];
+    };
+
+    if (!result.valid) {
+      const firstErrors = (result.errors ?? []).slice(0, 5).join("\n");
+      window.alert(`CAD IR validation failed:\n${firstErrors}`);
+      return false;
+    }
+
+    if ((result.warnings?.length ?? 0) > 0) {
+      const firstWarnings = (result.warnings ?? []).slice(0, 3).join("\n");
+      window.alert(`CAD IR validation warnings:\n${firstWarnings}`);
+    }
+
+    return true;
+  }
+
+  async function onSaveProject() {
     const currentCadIr = buildCurrentCadIr();
+    if (currentCadIr) {
+      const valid = await validateCadIrOrAlert(currentCadIr);
+      if (!valid) return;
+    }
 
     const session = createProjectSessionV2({
       sourceDxfName,
@@ -214,6 +252,14 @@ export default function App() {
       return;
     }
 
+    const valid = await validateCadIrOrAlert(exportCadIr);
+    if (!valid) return;
+
+    const defaultBase = sourceDxfName ? sourceDxfName.replace(/\.[^.]+$/, "") : "cadream-export";
+    const requestedName = window.prompt("Enter DXF file name", defaultBase);
+    if (requestedName === null) return;
+    const normalizedFileBase = requestedName.trim().replace(/\.[^.]+$/, "") || defaultBase;
+
     const res = await fetch("/api/dxf/export", {
       method: "POST",
       headers: {
@@ -223,7 +269,7 @@ export default function App() {
         source_token: doc.source_token,
         site_placements: sitePlacementPayload,
         cad_ir: exportCadIr,
-        source_file_name: sourceDxfName ?? "cadream-export",
+        source_file_name: normalizedFileBase,
       }),
     });
 
@@ -235,7 +281,7 @@ export default function App() {
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
-    const fileBase = sourceDxfName ? sourceDxfName.replace(/\.[^.]+$/, "") : "cadream-export";
+    const fileBase = normalizedFileBase;
     anchor.href = url;
     anchor.download = `${fileBase}.dxf`;
     document.body.appendChild(anchor);
