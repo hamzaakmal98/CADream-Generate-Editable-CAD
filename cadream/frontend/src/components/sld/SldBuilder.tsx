@@ -61,6 +61,9 @@ const TOOL_BUTTON_STYLE = {
   color: "#0f172a",
 } as const;
 const TERMINAL_SNAP_RADIUS = 14;
+const SLD_CANVAS_NODE_HEIGHT = 64;
+const SLD_CANVAS_SAFE_MARGIN = 24;
+const CIRCULAR_SYMBOL_TYPES = new Set(["utility-grid", "load"]);
 
 export default function SldBuilder({
   session,
@@ -105,6 +108,19 @@ export default function SldBuilder({
     return { x: clientX - rect.left, y: clientY - rect.top };
   }
 
+  function clampNodePosition(x: number, y: number, nodeWidth: number) {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return { x, y };
+
+    const maxX = Math.max(SLD_CANVAS_SAFE_MARGIN, rect.width - nodeWidth - SLD_CANVAS_SAFE_MARGIN);
+    const maxY = Math.max(SLD_CANVAS_SAFE_MARGIN, rect.height - SLD_CANVAS_NODE_HEIGHT - SLD_CANVAS_SAFE_MARGIN);
+
+    return {
+      x: Math.min(Math.max(x, SLD_CANVAS_SAFE_MARGIN), maxX),
+      y: Math.min(Math.max(y, SLD_CANVAS_SAFE_MARGIN), maxY),
+    };
+  }
+
   function handleDrop(e: DragEvent<HTMLDivElement>) {
     e.preventDefault();
     const symbolType = e.dataTransfer.getData("application/x-sld-symbol");
@@ -118,7 +134,9 @@ export default function SldBuilder({
     const point = canvasPoint(e.clientX, e.clientY);
     if (!point) return;
 
-    onAddNode(symbolType as SldSymbolType, point.x, point.y);
+    const symbol = getSldSymbolDefinition(symbolType);
+    const clamped = clampNodePosition(point.x, point.y, symbol?.width ?? 120);
+    onAddNode(symbolType as SldSymbolType, clamped.x, clamped.y);
   }
 
   function handleCanvasMouseMove(e: MouseEvent<HTMLDivElement>) {
@@ -143,7 +161,11 @@ export default function SldBuilder({
     if (!dragState) return;
     const point = canvasPoint(e.clientX, e.clientY);
     if (!point) return;
-    onMoveNode(dragState.nodeId, point.x - dragState.offsetX, point.y - dragState.offsetY);
+
+    const node = session.nodes.find((item) => item.id === dragState.nodeId);
+    const symbol = node ? getSldSymbolDefinition(node.symbol_type) : null;
+    const clamped = clampNodePosition(point.x - dragState.offsetX, point.y - dragState.offsetY, symbol?.width ?? 120);
+    onMoveNode(dragState.nodeId, clamped.x, clamped.y);
   }
 
   function stopNodeDrag() {
@@ -711,6 +733,8 @@ export default function SldBuilder({
             if (!symbol) return null;
 
             const selected = node.id === selectedNodeId;
+            const boxHeight = SLD_CANVAS_NODE_HEIGHT;
+            const isCircularSymbol = CIRCULAR_SYMBOL_TYPES.has(node.symbol_type);
             return (
               <div
                 key={node.id}
@@ -730,16 +754,16 @@ export default function SldBuilder({
                   left: node.x,
                   top: node.y,
                   width: symbol.width,
-                  height: symbol.height,
-                  border: `2px solid ${selected ? "#2563eb" : "#999"}`,
-                  borderRadius: 8,
-                  background: "#fff",
+                  height: boxHeight,
+                  border: isCircularSymbol ? "none" : `2px solid ${selected ? "#2563eb" : "#999"}`,
+                  borderRadius: isCircularSymbol ? 999 : 8,
+                  background: isCircularSymbol ? "transparent" : "#fff",
                   boxSizing: "border-box",
                   cursor: session.tool_settings.tool_mode === "select" ? "move" : "default",
                   userSelect: "none",
                 }}
               >
-                <SldSymbolGlyph type={node.symbol_type as SldSymbolType} width={symbol.width} height={symbol.height} />
+                <SldSymbolGlyph type={node.symbol_type as SldSymbolType} width={symbol.width} height={boxHeight} />
 
                 {node.terminals.map((terminal) => (
                   <button
