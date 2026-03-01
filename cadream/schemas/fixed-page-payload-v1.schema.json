@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fixed-page-payload-v1.schema.json",
+  "title": "CADream Fixed Page Payload v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generation_mode",
+    "page_number",
+    "template",
+    "sheet_metadata",
+    "title_block"
+  ],
+  "properties": {
+    "schema_version": { "const": "fixed-page-payload-v1" },
+    "generation_mode": { "const": "fixed" },
+    "page_number": { "type": "integer", "minimum": 1 },
+    "template": {
+      "type": "object",
+      "required": ["template_id", "include_strategy"],
+      "properties": {
+        "template_id": { "type": "string", "minLength": 1 },
+        "include_strategy": {
+          "type": "string",
+          "enum": ["as_is", "overlay_metadata"]
+        },
+        "source_path": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "sheet_metadata": {
+      "type": "object",
+      "required": ["sheet_number", "sheet_title"],
+      "properties": {
+        "sheet_number": { "type": "string", "minLength": 1 },
+        "sheet_title": { "type": "string", "minLength": 1 },
+        "discipline": { "type": "string" },
+        "scale": { "type": "string" },
+        "revision": { "type": "string" },
+        "issue_date": { "type": "string", "format": "date" },
+        "north_arrow": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "title_block": {
+      "type": "object",
+      "required": ["project_name", "client_name", "site_name"],
+      "properties": {
+        "project_name": { "type": "string", "minLength": 1 },
+        "client_name": { "type": "string", "minLength": 1 },
+        "site_name": { "type": "string", "minLength": 1 },
+        "site_address": { "type": "string" },
+        "project_number": { "type": "string" },
+        "drawn_by": { "type": "string" },
+        "checked_by": { "type": "string" },
+        "approved_by": { "type": "string" },
+        "company_name": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

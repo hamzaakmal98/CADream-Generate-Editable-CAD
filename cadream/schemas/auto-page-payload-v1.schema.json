@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "auto-page-payload-v1.schema.json",
+  "title": "CADream Auto Page Payload v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generation_mode",
+    "page_number",
+    "sheet_metadata",
+    "title_block",
+    "content"
+  ],
+  "properties": {
+    "schema_version": { "const": "auto-page-payload-v1" },
+    "generation_mode": { "const": "auto" },
+    "page_number": {
+      "type": "integer",
+      "enum": [1, 2, 4, 5, 6, 7, 12, 13, 16, 17, 24, 25, 42, 43]
+    },
+    "generator": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "sheet_metadata": {
+      "type": "object",
+      "required": ["sheet_number", "sheet_title"],
+      "properties": {
+        "sheet_number": { "type": "string", "minLength": 1 },
+        "sheet_title": { "type": "string", "minLength": 1 },
+        "discipline": { "type": "string" },
+        "scale": { "type": "string" },
+        "revision": { "type": "string" },
+        "issue_date": { "type": "string", "format": "date" },
+        "north_arrow": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "title_block": {
+      "type": "object",
+      "required": ["project_name", "client_name", "site_name"],
+      "properties": {
+        "project_name": { "type": "string", "minLength": 1 },
+        "client_name": { "type": "string", "minLength": 1 },
+        "site_name": { "type": "string", "minLength": 1 },
+        "site_address": { "type": "string" },
+        "project_number": { "type": "string" },
+        "drawn_by": { "type": "string" },
+        "checked_by": { "type": "string" },
+        "approved_by": { "type": "string" },
+        "company_name": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "inputs_used": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["site_plan", "sld", "cad_ir", "template"]
+      },
+      "uniqueItems": true
+    },
+    "content": {
+      "type": "object",
+      "required": ["entities"],
+      "properties": {
+        "entities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["kind"],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["line", "polyline", "circle", "text", "block_insert"]
+              },
+              "layer": { "type": "string" },
+              "data": { "type": "object" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "notes": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

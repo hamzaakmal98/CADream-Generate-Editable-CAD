@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "planset-manifest-v1.schema.json",
+  "title": "CADream Plan Set Manifest v1",
+  "type": "object",
+  "required": ["schema_version", "summary", "pages"],
+  "properties": {
+    "schema_version": {
+      "const": "planset-manifest-v1"
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total_pages", "auto_pages", "ready_auto_pages", "fixed_pages"],
+      "properties": {
+        "total_pages": { "type": "integer", "minimum": 1 },
+        "auto_pages": { "type": "integer", "minimum": 0 },
+        "ready_auto_pages": { "type": "integer", "minimum": 0 },
+        "fixed_pages": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["page_number", "generation_mode", "status", "requirements"],
+        "properties": {
+          "page_number": { "type": "integer", "minimum": 1 },
+          "generation_mode": {
+            "type": "string",
+            "enum": ["auto", "fixed"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["ready", "missing_inputs", "template"]
+          },
+          "requirements": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["site_plan", "sld"]
+            }
+          },
+          "missing_reasons": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
