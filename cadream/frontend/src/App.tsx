@@ -18,7 +18,7 @@ import {
   computeBessMarkerSize,
   estimateStructureBounds,
 } from "./utils/cadGeometry";
-import { attachSitePlanToCadIr, buildCadIrFromRenderDoc } from "./types/cadIr";
+import { attachSitePlanToCadIr, buildCadIrFromRenderDoc } from "./utils/cadIrBuilder";
 import {
   createProjectSessionV2,
   loadProjectFromAnySession,
@@ -297,7 +297,6 @@ export default function App() {
         sourceFileName: file.name,
       })
     );
-    (window as Window & { __doc?: RenderDoc }).__doc = data;
 
     if (fitBounds) fitToBounds(fitBounds);
   }

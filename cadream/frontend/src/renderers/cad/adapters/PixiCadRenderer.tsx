@@ -57,11 +57,7 @@ export default function PixiCadRenderer({ width, height, pos, scale, scene }: Ca
       appRef.current = null;
       rootRef.current = null;
     };
-  }, []);
-
-  if (!ready || initFailed) {
-    return <SvgCadRenderer width={width} height={height} pos={pos} scale={scale} scene={scene} />;
-  }
+  }, [width, height]);
 
   useEffect(() => {
     if (!appRef.current) return;
@@ -122,6 +118,12 @@ export default function PixiCadRenderer({ width, height, pos, scale, scene }: Ca
     root.position.set(pos.x, pos.y);
     root.scale.set(scale, -scale);
   }, [ready, scene, pos.x, pos.y, scale]);
+
+  const useSvgFallback = !ready || initFailed;
+
+  if (useSvgFallback) {
+    return <SvgCadRenderer width={width} height={height} pos={pos} scale={scale} scene={scene} />;
+  }
 
   return (
     <div
