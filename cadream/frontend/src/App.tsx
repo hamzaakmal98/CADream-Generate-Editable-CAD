@@ -336,6 +336,44 @@ export default function App() {
     });
   }
 
+  async function onExportPages2425FromSldBuilder() {
+    const res = await fetch("/api/planset/pages-24-25/export", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        total_pages: 43,
+        cad_ir: cadIr,
+        site_placements: sitePlacementPayload,
+        sld_session: sldEditor.session,
+      }),
+    });
+
+    if (!res.ok) {
+      let detail = "Failed to export pages 24/25 DXF zip.";
+      try {
+        const err = (await res.json()) as { detail?: string };
+        if (typeof err.detail === "string" && err.detail.trim()) {
+          detail = err.detail;
+        }
+      } catch {
+        // keep default detail
+      }
+      throw new Error(detail);
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "planset-pages-24-25.zip";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div style={{ height: "100vh", fontFamily: "system-ui", display: "flex", flexDirection: "column" }}>
       <div
@@ -449,6 +487,8 @@ export default function App() {
             onUpdateWireDraftCursor={sldEditor.updateWireDraftCursor}
             onCancelDrafts={sldEditor.cancelDrafts}
             onClearAll={sldEditor.clearAll}
+            onLoadSession={sldEditor.loadSession}
+            onExportPages2425={onExportPages2425FromSldBuilder}
           />
         )}
       </div>

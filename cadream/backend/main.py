@@ -6,6 +6,7 @@ from cad_export import export_dxf_from_cad_ir, export_dxf_from_source_bytes
 from cad_ir_validation import validate_cad_ir_payload
 from planset_manifest import build_plan_set_manifest
 from planset_payload_stubs import build_plan_set_payload_stubs
+from planset_sld_pages import export_sld_vertical_slice_zip
 import hashlib
 
 SOURCE_DXF_CACHE: dict[str, bytes] = {}
@@ -110,3 +111,16 @@ async def preview_plan_set_payload_stubs(payload: dict):
         return result
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Plan-set payload stub preview failed: {repr(e)}")
+
+
+@app.post("/planset/pages-24-25/export")
+async def export_planset_vertical_slice_pages_24_25(payload: dict):
+    try:
+        zip_bytes = export_sld_vertical_slice_zip(payload)
+        return Response(
+            content=zip_bytes,
+            media_type="application/zip",
+            headers={"Content-Disposition": "attachment; filename=planset-pages-24-25.zip"},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Plan-set pages 24/25 export failed: {repr(e)}")
