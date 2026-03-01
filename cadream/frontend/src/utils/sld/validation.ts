@@ -50,9 +50,7 @@ function endpointExists(nodesById: Map<string, SldNode>, nodeId: string, termina
 
 function isRoleCompatible(fromRole: "line" | "in" | "out", toRole: "line" | "in" | "out") {
   if (fromRole === "line" || toRole === "line") return true;
-  if (fromRole === "out" && toRole === "in") return true;
-  if (fromRole === "in" && toRole === "out") return true;
-  return false;
+  return fromRole === "out" && toRole === "in";
 }
 
 export function validateSldSession(session: SldSessionState): SldValidationIssue[] {

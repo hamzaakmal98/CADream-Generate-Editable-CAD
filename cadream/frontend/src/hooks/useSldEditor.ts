@@ -10,6 +10,79 @@ import {
   validateSldSession,
 } from "../utils/sld/validation";
 
+const SLD_GRID_SIZE = 24;
+const SLD_CANVAS_NODE_HEIGHT = 64;
+const SLD_MIN_ROW_GAP = 48;
+const SLD_ROW_START_MARGIN = 24;
+
+function snapToGrid(value: number) {
+  return Math.round(value / SLD_GRID_SIZE) * SLD_GRID_SIZE;
+}
+
+function snapUpToGrid(value: number) {
+  return Math.ceil(value / SLD_GRID_SIZE) * SLD_GRID_SIZE;
+}
+
+function nodeWidth(node: SldNode) {
+  const symbol = getSldSymbolDefinition(node.symbol_type);
+  if (symbol) return symbol.width;
+  return Math.max(120, ...node.terminals.map((terminal) => terminal.x), 120);
+}
+
+function normalizeNodeTerminals(node: SldNode): SldNode {
+  const symbol = getSldSymbolDefinition(node.symbol_type);
+  const sourceHeight = symbol?.height ?? Math.max(1, ...node.terminals.map((terminal) => terminal.y), 1);
+  const scaleY = SLD_CANVAS_NODE_HEIGHT / Math.max(sourceHeight, 1);
+
+  return {
+    ...node,
+    x: snapToGrid(node.x),
+    y: snapToGrid(node.y),
+    terminals: node.terminals.map((terminal) => ({
+      ...terminal,
+      y: terminal.y * scaleY,
+    })),
+  };
+}
+
+function normalizeSldSessionGeometry(session: SldSessionState): SldSessionState {
+  const normalizedNodes = session.nodes.map((node) => normalizeNodeTerminals(node));
+
+  const rows = new Map<number, SldNode[]>();
+  for (const node of normalizedNodes) {
+    const rowKey = Math.round(node.y / SLD_GRID_SIZE);
+    const bucket = rows.get(rowKey);
+    if (bucket) {
+      bucket.push(node);
+    } else {
+      rows.set(rowKey, [node]);
+    }
+  }
+
+  const positionedById = new Map<string, SldNode>();
+  const orderedRows = [...rows.keys()].sort((a, b) => a - b);
+  for (const rowKey of orderedRows) {
+    const rowNodes = [...(rows.get(rowKey) ?? [])].sort((a, b) => a.x - b.x);
+    let nextX = SLD_ROW_START_MARGIN;
+
+    for (const node of rowNodes) {
+      const width = nodeWidth(node);
+      const targetX = snapUpToGrid(Math.max(node.x, nextX));
+      positionedById.set(node.id, { ...node, x: targetX });
+      nextX = targetX + width + SLD_MIN_ROW_GAP;
+    }
+  }
+
+  const nodes = normalizedNodes.map((node) => positionedById.get(node.id) ?? node);
+  const edges = rerouteEdges(session.edges, nodes);
+
+  return {
+    ...session,
+    nodes,
+    edges,
+  };
+}
+
 function defaultSldSession(): SldSessionState {
   return {
     schema_version: "sld-v1",
@@ -45,16 +118,44 @@ function canConnect(
   const toRole = terminalRole(to.node, to.terminalId);
   if (!fromRole || !toRole) return false;
   if (fromRole === "line" || toRole === "line") return true;
-  if (fromRole === "out" && toRole === "in") return true;
-  if (fromRole === "in" && toRole === "out") return true;
-  return false;
+  return fromRole === "out" && toRole === "in";
+}
+
+function shouldFlipEdgeDirection(edge: SldEdge, nodesById: Map<string, SldNode>) {
+  const fromNode = nodesById.get(edge.from_node_id);
+  const toNode = nodesById.get(edge.to_node_id);
+  if (!fromNode || !toNode) return false;
+
+  const fromRole = terminalRole(fromNode, edge.from_terminal_id);
+  const toRole = terminalRole(toNode, edge.to_terminal_id);
+  if (!fromRole || !toRole) return false;
+  if (fromRole === "line" || toRole === "line") return false;
+  return fromRole === "in" && toRole === "out";
+}
+
+function canonicalizeEdgeDirection(edge: SldEdge, nodesById: Map<string, SldNode>): SldEdge {
+  if (!shouldFlipEdgeDirection(edge, nodesById)) return edge;
+
+  return {
+    ...edge,
+    from_node_id: edge.to_node_id,
+    from_terminal_id: edge.to_terminal_id,
+    to_node_id: edge.from_node_id,
+    to_terminal_id: edge.from_terminal_id,
+    points: [...edge.points].reverse(),
+  };
 }
 
 function rerouteEdges(edges: SldEdge[], nodes: SldNode[]): SldEdge[] {
-  return edges.map((edge) => ({
-    ...edge,
-    points: buildOrthogonalEdgePoints(edge, nodes),
-  }));
+  const nodesById = new Map<string, SldNode>(nodes.map((node) => [node.id, node]));
+
+  return edges.map((edge) => {
+    const oriented = canonicalizeEdgeDirection(edge, nodesById);
+    return {
+      ...oriented,
+      points: buildOrthogonalEdgePoints(oriented, nodes),
+    };
+  });
 }
 
 export function useSldEditor() {
@@ -91,7 +192,7 @@ export function useSldEditor() {
   }
 
   function loadSession(next: SldSessionState) {
-    setSession(next);
+    setSession(normalizeSldSessionGeometry(next));
     setUndoStack([]);
     setRedoStack([]);
     setSelectedNodeId(null);
@@ -146,13 +247,13 @@ export function useSldEditor() {
         id: nodeId,
         symbol_type: symbol.type,
         label: `${symbol.label} ${nextCounter}`,
-        x,
-        y,
+        x: snapToGrid(x),
+        y: snapToGrid(y),
         rotation_deg: 0,
         terminals: symbol.terminals.map((terminal) => ({
           id: terminal.id,
           x: terminal.x,
-          y: terminal.y,
+          y: terminal.y * (SLD_CANVAS_NODE_HEIGHT / Math.max(symbol.height, 1)),
           role: terminal.role,
         })),
         metadata: {
@@ -170,7 +271,9 @@ export function useSldEditor() {
 
   function moveNode(nodeId: string, x: number, y: number) {
     commitSession((prev) => {
-      const nodes = prev.nodes.map((node) => (node.id === nodeId ? { ...node, x, y } : node));
+      const snappedX = snapToGrid(x);
+      const snappedY = snapToGrid(y);
+      const nodes = prev.nodes.map((node) => (node.id === nodeId ? { ...node, x: snappedX, y: snappedY } : node));
       const edges = rerouteEdges(prev.edges, nodes);
       return { ...prev, nodes, edges };
     });
@@ -305,12 +408,17 @@ export function useSldEditor() {
       return;
     }
 
-    if (
-      !canConnect(
-        { node: fromNode, terminalId: wireDraft.fromTerminalId },
-        { node: toNode, terminalId }
-      )
-    ) {
+    const directConnection = canConnect(
+      { node: fromNode, terminalId: wireDraft.fromTerminalId },
+      { node: toNode, terminalId }
+    );
+
+    const reverseConnection = canConnect(
+      { node: toNode, terminalId },
+      { node: fromNode, terminalId: wireDraft.fromTerminalId }
+    );
+
+    if (!directConnection && !reverseConnection) {
       setWireDraft(null);
       return;
     }
@@ -330,14 +438,33 @@ export function useSldEditor() {
       const tail = orthogonalLeg(last, endPoint);
       const routedPoints = collapseDuplicatePoints([...committed, ...tail]);
 
-      const nextEdge: SldEdge = {
-        id: edgeId,
-        from_node_id: wireDraft.fromNodeId,
-        from_terminal_id: wireDraft.fromTerminalId,
-        to_node_id: nodeId,
-        to_terminal_id: terminalId,
-        points: routedPoints,
-      };
+      const shouldFlip = !directConnection && reverseConnection;
+
+      const nextEdge: SldEdge = shouldFlip
+        ? {
+            id: edgeId,
+            from_node_id: nodeId,
+            from_terminal_id: terminalId,
+            to_node_id: wireDraft.fromNodeId,
+            to_terminal_id: wireDraft.fromTerminalId,
+            points: buildOrthogonalEdgePoints(
+              {
+                from_node_id: nodeId,
+                from_terminal_id: terminalId,
+                to_node_id: wireDraft.fromNodeId,
+                to_terminal_id: wireDraft.fromTerminalId,
+              },
+              prev.nodes
+            ),
+          }
+        : {
+            id: edgeId,
+            from_node_id: wireDraft.fromNodeId,
+            from_terminal_id: wireDraft.fromTerminalId,
+            to_node_id: nodeId,
+            to_terminal_id: terminalId,
+            points: routedPoints,
+          };
       return { ...prev, edges: [...prev.edges, nextEdge] };
     });
 

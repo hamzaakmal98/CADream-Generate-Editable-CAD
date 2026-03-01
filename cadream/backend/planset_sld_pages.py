@@ -5,6 +5,7 @@ from typing import Any
 from zipfile import ZIP_DEFLATED, ZipFile
 
 import ezdxf
+from ezdxf.enums import TextEntityAlignment
 
 PAGE_24 = 24
 PAGE_25 = 25
@@ -51,6 +52,29 @@ SYMBOL_DISPLAY_LABEL: dict[str, str] = {
 }
 
 NODE_HALF_WIDTH = 15.0
+CANVAS_NODE_HEIGHT = 64.0
+
+SYMBOL_CANVAS_WIDTH: dict[str, float] = {
+    "utility-grid": 96.0,
+    "utility-meter": 96.0,
+    "main-disconnect": 130.0,
+    "main-distribution-panel": 150.0,
+    "eqore-computing-unit": 160.0,
+    "battery-system-electrical-disconnect": 190.0,
+    "battery-storage-system-breaker": 180.0,
+    "inverter": 108.0,
+    "isolation-transformer": 146.0,
+    "transformer": 110.0,
+    "subpanel": 130.0,
+    "bess": 110.0,
+    "load": 92.0,
+    "current-sensor-input": 150.0,
+}
+
+SYMBOL_BLOCK_HALF_WIDTH: dict[str, float] = {
+    "utility-grid": 8.5,
+    "load": 8.5,
+}
 
 
 def _orthogonal_route(start: tuple[float, float], end: tuple[float, float]) -> list[tuple[float, float]]:
@@ -62,6 +86,30 @@ def _orthogonal_route(start: tuple[float, float], end: tuple[float, float]) -> l
 
     mid_x = (sx + ex) / 2
     return [(sx, sy), (mid_x, sy), (mid_x, ey), (ex, ey)]
+
+
+def _orthogonalize_polyline(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    if len(points) < 2:
+        return points
+
+    output: list[tuple[float, float]] = [points[0]]
+    for next_point in points[1:]:
+        prev_x, prev_y = output[-1]
+        next_x, next_y = next_point
+
+        if abs(prev_x - next_x) < 1e-6 or abs(prev_y - next_y) < 1e-6:
+            output.append((next_x, next_y))
+            continue
+
+        output.append((next_x, prev_y))
+        output.append((next_x, next_y))
+
+    deduped: list[tuple[float, float]] = [output[0]]
+    for point in output[1:]:
+        if abs(point[0] - deduped[-1][0]) > 1e-6 or abs(point[1] - deduped[-1][1]) > 1e-6:
+            deduped.append(point)
+
+    return deduped
 
 
 def _to_float(value: Any, default: float = 0.0) -> float:
@@ -151,13 +199,43 @@ def _compute_transform(nodes: list[dict[str, Any]]) -> tuple[float, float, float
     if not nodes:
         return 0.0, 1.0, 0.0, 1.0
 
-    xs = [node["x"] for node in nodes]
-    ys = [node["y"] for node in nodes]
+    min_x = float("inf")
+    max_x = float("-inf")
+    min_y = float("inf")
+    max_y = float("-inf")
 
-    min_x = min(xs)
-    max_x = max(xs)
-    min_y = min(ys)
-    max_y = max(ys)
+    for node in nodes:
+        symbol_type = _safe_str(node.get("symbol_type"))
+        node_width = SYMBOL_CANVAS_WIDTH.get(symbol_type, 120.0)
+        node_x = _to_float(node.get("x"))
+        node_y = _to_float(node.get("y"))
+
+        min_x = min(min_x, node_x)
+        max_x = max(max_x, node_x + node_width)
+        min_y = min(min_y, node_y)
+        max_y = max(max_y, node_y + CANVAS_NODE_HEIGHT)
+
+    if min_x == float("inf") or min_y == float("inf"):
+        return 0.0, 1.0, 0.0, 1.0
+
+    return min_x, max_x, min_y, max_y
+
+
+def _compute_transform_with_edges(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> tuple[float, float, float, float]:
+    min_x, max_x, min_y, max_y = _compute_transform(nodes)
+
+    for edge in edges:
+        points = edge.get("points")
+        if not isinstance(points, list):
+            continue
+        for point in points:
+            if not isinstance(point, tuple) or len(point) < 2:
+                continue
+            px, py = point
+            min_x = min(min_x, px)
+            max_x = max(max_x, px)
+            min_y = min(min_y, py)
+            max_y = max(max_y, py)
 
     return min_x, max_x, min_y, max_y
 
@@ -189,19 +267,159 @@ def _ensure_layer(doc: ezdxf.document.Drawing, layer_name: str, color: int) -> N
     doc.layers.get(layer_name).dxf.color = color
 
 
-def _ensure_symbol_block(doc: ezdxf.document.Drawing, block_name: str, display_label: str) -> None:
+def _fit_text_height(
+    text: str,
+    *,
+    max_width: float,
+    max_height: float,
+    default_height: float,
+    min_height: float = 0.55,
+) -> float:
+    safe_text = text.strip()
+    if not safe_text:
+        return max(min_height, min(default_height, max_height))
+
+    estimated_char_width_factor = 0.72
+    width_limited = max_width / max(len(safe_text) * estimated_char_width_factor, 1.0)
+    fitted = min(default_height, max_height, width_limited)
+    return max(min_height, fitted * 0.9)
+
+
+def _split_label_two_lines(text: str) -> tuple[str, str] | None:
+    words = [part for part in text.strip().split(" ") if part]
+    if len(words) < 2:
+        return None
+
+    best: tuple[str, str] | None = None
+    best_delta = float("inf")
+    for idx in range(1, len(words)):
+        left = " ".join(words[:idx]).strip()
+        right = " ".join(words[idx:]).strip()
+        if not left or not right:
+            continue
+        delta = abs(len(left) - len(right))
+        if delta < best_delta:
+            best_delta = delta
+            best = (left, right)
+
+    return best
+
+
+def _add_fitted_symbol_text(
+    block: Any,
+    text: str,
+    *,
+    max_width: float,
+    max_height: float,
+    default_height: float,
+) -> None:
+    label = text.strip()
+    if not label:
+        return
+
+    single_height = _fit_text_height(
+        label,
+        max_width=max_width,
+        max_height=max_height,
+        default_height=default_height,
+    )
+    single_width_ratio = (len(label) * single_height * 0.72) / max(max_width, 1.0)
+
+    split = _split_label_two_lines(label)
+    if split is None:
+        block.add_text(label, dxfattribs={"layer": "0", "height": single_height}).set_placement(
+            (0.0, 0.0), align=TextEntityAlignment.MIDDLE_CENTER
+        )
+        return
+
+    line_1, line_2 = split
+    per_line_height_limit = max_height * 0.46
+    line_height = min(
+        _fit_text_height(line_1, max_width=max_width, max_height=per_line_height_limit, default_height=default_height),
+        _fit_text_height(line_2, max_width=max_width, max_height=per_line_height_limit, default_height=default_height),
+    )
+
+    should_prefer_multiline = len(label) >= 18 or single_width_ratio >= 0.8
+    if line_height <= single_height * 1.05 and not should_prefer_multiline:
+        block.add_text(label, dxfattribs={"layer": "0", "height": single_height}).set_placement(
+            (0.0, 0.0), align=TextEntityAlignment.MIDDLE_CENTER
+        )
+        return
+
+    line_gap = line_height * 0.45
+    y_offset = (line_height + line_gap) / 2
+
+    block.add_text(line_1, dxfattribs={"layer": "0", "height": line_height}).set_placement(
+        (0.0, y_offset), align=TextEntityAlignment.MIDDLE_CENTER
+    )
+    block.add_text(line_2, dxfattribs={"layer": "0", "height": line_height}).set_placement(
+        (0.0, -y_offset), align=TextEntityAlignment.MIDDLE_CENTER
+    )
+
+
+def _route_with_straight_preference(
+    from_anchor: tuple[float, float],
+    to_anchor: tuple[float, float],
+    points: Any,
+) -> list[tuple[float, float]]:
+    if abs(from_anchor[1] - to_anchor[1]) < 1e-6:
+        return [from_anchor, to_anchor]
+
+    if isinstance(points, list) and len(points) >= 2:
+        polyline_points = list(points)
+        polyline_points[0] = from_anchor
+        polyline_points[-1] = to_anchor
+        return polyline_points
+
+    return _orthogonal_route(from_anchor, to_anchor)
+
+
+def _ensure_symbol_block(doc: ezdxf.document.Drawing, block_name: str, display_label: str, symbol_type: str) -> None:
     if block_name in doc.blocks:
         return
 
     width = 30.0
     height = 18.0
     block = doc.blocks.new(name=block_name)
+
+    if symbol_type in {"utility-grid", "load"}:
+        radius = 8.5
+        block.add_circle((0.0, 0.0), radius, dxfattribs={"layer": "0"})
+        _add_fitted_symbol_text(
+            block,
+            display_label,
+            max_width=radius * 1.7,
+            max_height=radius * 0.9,
+            default_height=1.6,
+        )
+        return
+
     poly = block.add_lwpolyline(
         [(-width / 2, -height / 2), (width / 2, -height / 2), (width / 2, height / 2), (-width / 2, height / 2)],
         dxfattribs={"layer": "0"},
     )
     poly.closed = True
-    block.add_text(display_label[:20], dxfattribs={"layer": "0", "height": 2.5}).set_placement((-width / 2 + 1.0, -1.0))
+    _add_fitted_symbol_text(
+        block,
+        display_label,
+        max_width=width - 2.0,
+        max_height=height - 2.0,
+        default_height=1.8,
+    )
+
+
+def _node_block_half_width(symbol_type: str) -> float:
+    return SYMBOL_BLOCK_HALF_WIDTH.get(symbol_type, NODE_HALF_WIDTH)
+
+
+def _anchor_point(
+    center: tuple[float, float],
+    symbol_type: str,
+    toward_x: float,
+) -> tuple[float, float]:
+    half_width = _node_block_half_width(symbol_type)
+    cx, cy = center
+    return (cx + half_width if toward_x >= cx else cx - half_width, cy)
 
 
 def _draw_page_template(
@@ -242,88 +460,103 @@ def _draw_sld_nodes(
         symbol_type = node["symbol_type"]
         block_name = SYMBOL_BLOCK_MAP.get(symbol_type, "SLD_GENERIC_NODE")
         display_label = SYMBOL_DISPLAY_LABEL.get(symbol_type, node["label"])
-        _ensure_symbol_block(doc, block_name, display_label)
+        _ensure_symbol_block(doc, block_name, display_label, symbol_type)
 
         x, y = node_points[node["id"]]
 
         ref = layout.add_blockref(block_name, (x, y), dxfattribs={"layer": equip_layer})
         ref.dxf.rotation = _to_float(node.get("rotation_deg"), 0.0)
 
-        annotation = f"{node['label']} ({symbol_type or 'generic'})"
-        layout.add_text(annotation[:72], dxfattribs={"layer": annotation_layer, "height": 2.2}).set_placement((x - 18.0, y - 14.0))
-
 
 def _draw_sld_edges_page_24(
     layout: Any,
     edges: list[dict[str, Any]],
     node_points: dict[str, tuple[float, float]],
+    node_symbol_types: dict[str, str],
     *,
     wire_layer: str,
-    annotation_layer: str,
 ) -> None:
-    for index, edge in enumerate(edges, start=1):
+    for edge in edges:
         from_center = node_points.get(edge["from_node_id"])
         to_center = node_points.get(edge["to_node_id"])
 
         from_anchor: tuple[float, float] | None = None
         to_anchor: tuple[float, float] | None = None
         if from_center and to_center:
-            left_to_right = to_center[0] >= from_center[0]
-            from_anchor = (
-                from_center[0] + NODE_HALF_WIDTH if left_to_right else from_center[0] - NODE_HALF_WIDTH,
-                from_center[1],
+            points = edge["points"]
+            start_toward_x = to_center[0]
+            end_toward_x = from_center[0]
+            if isinstance(points, list) and len(points) >= 2:
+                start_toward_x = points[1][0]
+                end_toward_x = points[-2][0]
+
+            from_anchor = _anchor_point(
+                from_center,
+                node_symbol_types.get(edge["from_node_id"], ""),
+                start_toward_x,
             )
-            to_anchor = (
-                to_center[0] - NODE_HALF_WIDTH if left_to_right else to_center[0] + NODE_HALF_WIDTH,
-                to_center[1],
+            to_anchor = _anchor_point(
+                to_center,
+                node_symbol_types.get(edge["to_node_id"], ""),
+                end_toward_x,
             )
 
         if not from_anchor or not to_anchor:
             continue
 
-        polyline_points = _orthogonal_route(from_anchor, to_anchor)
+        points = edge["points"]
+        polyline_points = _route_with_straight_preference(from_anchor, to_anchor, points)
+
+        polyline_points = _orthogonalize_polyline(polyline_points)
 
         if len(polyline_points) < 2:
             continue
 
         layout.add_lwpolyline(polyline_points, dxfattribs={"layer": wire_layer})
-        mid_point = polyline_points[len(polyline_points) // 2]
-        layout.add_text(f"W-{index:02d}", dxfattribs={"layer": annotation_layer, "height": 2.0}).set_placement(
-            (mid_point[0] + 1.5, mid_point[1] + 1.5)
-        )
 
 
 def _draw_sld_edges_page_25(
     layout: Any,
     edges: list[dict[str, Any]],
     node_points: dict[str, tuple[float, float]],
+    node_symbol_types: dict[str, str],
     *,
     wire_layer: str,
-    annotation_layer: str,
 ) -> None:
     offsets = (-1.5, 0.0, 1.5)
 
-    for index, edge in enumerate(edges, start=1):
+    for edge in edges:
         from_center = node_points.get(edge["from_node_id"])
         to_center = node_points.get(edge["to_node_id"])
 
         from_anchor: tuple[float, float] | None = None
         to_anchor: tuple[float, float] | None = None
         if from_center and to_center:
-            left_to_right = to_center[0] >= from_center[0]
-            from_anchor = (
-                from_center[0] + NODE_HALF_WIDTH if left_to_right else from_center[0] - NODE_HALF_WIDTH,
-                from_center[1],
+            points = edge["points"]
+            start_toward_x = to_center[0]
+            end_toward_x = from_center[0]
+            if isinstance(points, list) and len(points) >= 2:
+                start_toward_x = points[1][0]
+                end_toward_x = points[-2][0]
+
+            from_anchor = _anchor_point(
+                from_center,
+                node_symbol_types.get(edge["from_node_id"], ""),
+                start_toward_x,
             )
-            to_anchor = (
-                to_center[0] - NODE_HALF_WIDTH if left_to_right else to_center[0] + NODE_HALF_WIDTH,
-                to_center[1],
+            to_anchor = _anchor_point(
+                to_center,
+                node_symbol_types.get(edge["to_node_id"], ""),
+                end_toward_x,
             )
 
         if not from_anchor or not to_anchor:
             continue
 
-        polyline_points = _orthogonal_route(from_anchor, to_anchor)
+        points = edge["points"]
+        polyline_points = _route_with_straight_preference(from_anchor, to_anchor, points)
+
+        polyline_points = _orthogonalize_polyline(polyline_points)
 
         if len(polyline_points) < 2:
             continue
@@ -331,11 +564,6 @@ def _draw_sld_edges_page_25(
         for offset in offsets:
             shifted = [(x, y + offset) for x, y in polyline_points]
             layout.add_lwpolyline(shifted, dxfattribs={"layer": wire_layer})
-
-        mid_point = polyline_points[len(polyline_points) // 2]
-        layout.add_text(f"3PH-W-{index:02d}", dxfattribs={"layer": annotation_layer, "height": 2.0}).set_placement(
-            (mid_point[0] + 2.0, mid_point[1] + 2.0)
-        )
 
 
 def _serialize_doc(doc: ezdxf.document.Drawing) -> bytes:
@@ -376,8 +604,17 @@ def _build_page_doc(
         sheet_title=sheet_title,
     )
 
-    transform = _compute_transform(nodes)
-    node_points = {node["id"]: _project_point(node["x"], node["y"], transform) for node in nodes}
+    transform = _compute_transform_with_edges(nodes, edges)
+
+    node_points: dict[str, tuple[float, float]] = {}
+    node_symbol_types: dict[str, str] = {}
+    for node in nodes:
+        symbol_type = _safe_str(node.get("symbol_type"))
+        source_width = SYMBOL_CANVAS_WIDTH.get(symbol_type, 120.0)
+        center_x = node["x"] + source_width / 2
+        center_y = node["y"] + CANVAS_NODE_HEIGHT / 2
+        node_points[node["id"]] = _project_point(center_x, center_y, transform)
+        node_symbol_types[node["id"]] = symbol_type
 
     _draw_sld_nodes(
         doc,
@@ -398,16 +635,16 @@ def _build_page_doc(
             layout,
             projected_edges,
             node_points,
+            node_symbol_types,
             wire_layer=wire_layer,
-            annotation_layer=annotation_layer,
         )
     else:
         _draw_sld_edges_page_25(
             layout,
             projected_edges,
             node_points,
+            node_symbol_types,
             wire_layer=wire_layer,
-            annotation_layer=annotation_layer,
         )
 
     return _serialize_doc(doc)
