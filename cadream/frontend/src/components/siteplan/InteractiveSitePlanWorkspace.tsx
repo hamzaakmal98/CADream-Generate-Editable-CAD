@@ -8,13 +8,9 @@ import type {
   PointOfInterconnection,
   RenderDoc,
   RenderEntity,
-  SitePlacementExport,
-  SldSessionState,
   ToolMode,
 } from "../../types/cad";
-import type { CadIrDrawing } from "../../types/cadIr";
 import type { RightPanelMetadata } from "../../types/planset";
-import PlanSetStatusPanel from "./PlanSetStatusPanel";
 
 type CadIrValidationState = {
   level: "error" | "warning" | "success";
@@ -40,9 +36,6 @@ type InteractiveSitePlanWorkspaceProps = {
   bessMarkerSize: number;
   poiMarkerSize: number;
   bessSizeFactor: number;
-  cadIr: CadIrDrawing | null;
-  sitePlacementPayload: SitePlacementExport;
-  sldSession: SldSessionState;
   cadIrValidationState: CadIrValidationState;
   canExportDxf: boolean;
   onDismissValidation: () => void;
@@ -61,6 +54,7 @@ type InteractiveSitePlanWorkspaceProps = {
   onSaveProject: () => void;
   onLoadProject: (file: File) => void;
   onExportDxf: () => void;
+  onExportAutoPages: () => void;
   onExportPagesPdf: () => void;
   isExportingPlansetPdf: boolean;
   plansetPdfProgress: number | null;
@@ -94,9 +88,6 @@ export default function InteractiveSitePlanWorkspace({
   bessMarkerSize,
   poiMarkerSize,
   bessSizeFactor,
-  cadIr,
-  sitePlacementPayload,
-  sldSession,
   cadIrValidationState,
   canExportDxf,
   onDismissValidation,
@@ -115,6 +106,7 @@ export default function InteractiveSitePlanWorkspace({
   onSaveProject,
   onLoadProject,
   onExportDxf,
+  onExportAutoPages,
   onExportPagesPdf,
   isExportingPlansetPdf,
   plansetPdfProgress,
@@ -157,6 +149,7 @@ export default function InteractiveSitePlanWorkspace({
         onSaveProject={onSaveProject}
         onLoadProject={onLoadProject}
         onExportDxf={onExportDxf}
+        onExportAutoPages={onExportAutoPages}
         onExportPagesPdf={onExportPagesPdf}
         isExportingPlansetPdf={isExportingPlansetPdf}
         plansetPdfProgress={plansetPdfProgress}
@@ -235,8 +228,6 @@ export default function InteractiveSitePlanWorkspace({
           </ul>
         </div>
       )}
-
-      <PlanSetStatusPanel cadIr={cadIr} sitePlacementPayload={sitePlacementPayload} sldSession={sldSession} />
 
       <CadCanvas
         stageRef={stageRef}

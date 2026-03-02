@@ -49,14 +49,19 @@ type SldBuilderProps = {
   onCancelDrafts: () => void;
   onClearAll: () => void;
   onLoadSession: (session: SldSessionState) => void;
-  onExportPages2425: () => Promise<void>;
 };
 
 const TOOL_BUTTON_STYLE = {
+  minHeight: 34,
+  minWidth: 150,
   padding: "6px 10px",
   border: "1px solid #cfd7e3",
   borderRadius: 6,
   background: "#fff",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  textAlign: "center" as const,
   fontSize: 13,
   color: "#0f172a",
 } as const;
@@ -88,14 +93,11 @@ export default function SldBuilder({
   onCancelDrafts,
   onClearAll,
   onLoadSession,
-  onExportPages2425,
 }: SldBuilderProps) {
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
-  const [isExportingPages2425, setIsExportingPages2425] = useState(false);
   const [dragState, setDragState] = useState<{
     nodeId: string;
     offsetX: number;
@@ -414,19 +416,6 @@ export default function SldBuilder({
     }
   }
 
-  async function handleExportPages2425() {
-    setIsExportingPages2425(true);
-    setExportError(null);
-    try {
-      await onExportPages2425();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to export pages 24/25.";
-      setExportError(message);
-    } finally {
-      setIsExportingPages2425(false);
-    }
-  }
-
   return (
     <div style={{ display: "flex", height: "100%", background: "#f8fafc", minWidth: 0 }}>
       <div
@@ -454,7 +443,7 @@ export default function SldBuilder({
             style={{
               ...TOOL_BUTTON_STYLE,
               padding: "4px 6px",
-              minWidth: 28,
+                minWidth: 34,
               lineHeight: 1,
               border: "1px solid #cfd7e3",
               background: "#fff",
@@ -547,7 +536,6 @@ export default function SldBuilder({
                 ...TOOL_BUTTON_STYLE,
                 background: session.tool_settings.tool_mode === mode ? "#e8f0ff" : "#fff",
                 border: session.tool_settings.tool_mode === mode ? "1px solid #9db6ff" : "1px solid #cfd7e3",
-                minWidth: 64,
               }}
               onClick={() => onSetToolMode(mode)}
             >
@@ -581,13 +569,6 @@ export default function SldBuilder({
           </button>
           <button style={TOOL_BUTTON_STYLE} onClick={onClearAll}>
             Clear Canvas
-          </button>
-          <button
-            style={TOOL_BUTTON_STYLE}
-            onClick={() => void handleExportPages2425()}
-            disabled={isExportingPages2425}
-          >
-            {isExportingPages2425 ? "Generating 24/25..." : "Generate Pages 24/25 (DXF)"}
           </button>
           <button style={TOOL_BUTTON_STYLE} onClick={() => importInputRef.current?.click()}>
             Import SLD JSON
@@ -630,22 +611,6 @@ export default function SldBuilder({
             }}
           >
             {importError}
-          </div>
-        )}
-
-        {exportError && (
-          <div
-            style={{
-              margin: "8px 12px",
-              padding: "8px 10px",
-              fontSize: 12,
-              borderRadius: 6,
-              border: "1px solid #fecaca",
-              background: "#fef2f2",
-              color: "#7f1d1d",
-            }}
-          >
-            {exportError}
           </div>
         )}
 

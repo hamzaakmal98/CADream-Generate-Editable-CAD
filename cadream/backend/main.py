@@ -13,6 +13,7 @@ from planset_right_panel_validation import validate_right_panel_payload
 from planset_site_page_profiles import get_site_page_profile, get_site_page_profiles
 from planset_sld_pages import export_sld_vertical_slice_zip
 from planset_auto_pages_dxf import export_auto_pages_dxf_zip
+from planset_package import export_planset_package_zip
 from planset_template_sample import generate_common_template_sample_dxf
 import hashlib
 
@@ -182,6 +183,17 @@ async def export_planset_auto_pages_dxf(payload: dict):
         return _download_response(zip_bytes, media_type="application/zip", filename="planset-auto-pages.zip")
 
     return _run_with_bad_request("Plan-set auto pages DXF export failed", _operation)
+
+
+@app.post("/planset/export")
+async def export_planset_package(payload: dict):
+    def _operation() -> Response:
+        normalized_payload = enrich_payload_with_normalized_inputs(payload)
+        _validate_right_panel_metadata_or_raise(normalized_payload)
+        zip_bytes = export_planset_package_zip(normalized_payload)
+        return _download_response(zip_bytes, media_type="application/zip", filename="planset-export.zip")
+
+    return _run_with_bad_request("Plan-set full export failed", _operation)
 
 
 @app.get("/planset/site-page-profiles")
