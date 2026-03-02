@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cadream.local/schemas/site-design-spec.schema.json",
+  "title": "SiteDesignSpec",
+  "description": "Site plan interaction payload for BESS placement and cable routing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "bess", "poi", "cables"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "site-design-spec-v1"
+    },
+    "source_token": {
+      "type": "string",
+      "description": "Token representing parsed source DXF cached by backend."
+    },
+    "bess": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "x", "y"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "x": { "type": "number" },
+          "y": { "type": "number" },
+          "rotation": { "type": "number" },
+          "scale": { "type": "number", "exclusiveMinimum": 0 }
+        }
+      }
+    },
+    "poi": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "label": { "type": "string" }
+      }
+    },
+    "cables": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "points"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "points": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["x", "y"],
+              "properties": {
+                "x": { "type": "number" },
+                "y": { "type": "number" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
