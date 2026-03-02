@@ -407,7 +407,7 @@ export default function App() {
       site_placements: sitePlacementPayload,
       sld_session: sldEditor.session,
     });
-    triggerFileDownload(blob, "planset-pages-24-25.zip");
+    triggerFileDownload(blob, "planset-auto-pages.zip");
   }
 
   async function onExportPagesPdfFromInterfaceA() {
