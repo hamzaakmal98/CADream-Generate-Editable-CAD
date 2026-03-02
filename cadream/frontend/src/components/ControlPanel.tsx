@@ -46,6 +46,8 @@ type ControlPanelProps = {
   onLoadProject: (file: File) => void;
   onExportDxf: () => void;
   onExportPagesPdf: () => void;
+  isExportingPlansetPdf: boolean;
+  plansetPdfProgress: number | null;
   rightPanelMetadata: RightPanelMetadata;
   onRightPanelMetadataChange: (next: RightPanelMetadata) => void;
   canExportDxf: boolean;
@@ -78,6 +80,8 @@ export default function ControlPanel({
   onLoadProject,
   onExportDxf,
   onExportPagesPdf,
+  isExportingPlansetPdf,
+  plansetPdfProgress,
   rightPanelMetadata,
   onRightPanelMetadataChange,
   canExportDxf,
@@ -163,15 +167,32 @@ export default function ControlPanel({
           style={{ ...BUTTON_STYLE, width: "100%", marginBottom: 6 }}
           onClick={() => setShowMetadataForm((prev) => !prev)}
         >
-          {showMetadataForm ? "Hide Page Data Form" : "Open Page Data Form"}
+          {showMetadataForm ? "Hide PlanSet MetaData" : "Enter PlanSet MetaData"}
         </button>
         <button
           style={{ ...BUTTON_STYLE, width: "100%" }}
-          disabled={!doc}
+          disabled={!doc || isExportingPlansetPdf}
           onClick={onExportPagesPdf}
         >
-          Generate Pages PDF
+          {isExportingPlansetPdf ? "Generating PlanSet PDF..." : "Generate PlanSet PDF"}
         </button>
+        {(isExportingPlansetPdf || plansetPdfProgress !== null) && (
+          <div style={{ marginTop: 6 }}>
+            <div style={{ width: "100%", height: 8, border: "1px solid #cbd5e1", borderRadius: 4, overflow: "hidden", background: "#f8fafc" }}>
+              <div
+                style={{
+                  height: "100%",
+                  width: `${plansetPdfProgress ?? 40}%`,
+                  background: "#2563eb",
+                  transition: "width 150ms linear",
+                }}
+              />
+            </div>
+            <div style={{ fontSize: 11, color: "#334155", marginTop: 4 }}>
+              {plansetPdfProgress === null ? "Downloading PlanSet PDF..." : `Downloading PlanSet PDF... ${plansetPdfProgress}%`}
+            </div>
+          </div>
+        )}
       </div>
 
       {showMetadataForm && (

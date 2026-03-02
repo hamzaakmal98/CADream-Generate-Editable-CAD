@@ -5,6 +5,58 @@ from typing import Any
 
 SITE_PAGE_PROFILE_VERSION = "site-page-profiles-v1"
 
+PAGE_TITLE_NAMING_SPECS: dict[int, str] = {
+    1: "Customer Name - (_kW, _kWh) Energy Storage System.",
+    2: "Customer Name - Property Details",
+    3: "Customer Name - EQORE System Overview",
+    4: "Customer Name - Existing Switchgear",
+    5: "Customer Name - Main Distribution Panel Detail",
+    6: "Customer Name - Plan Overview & Total Impact Area",
+    7: "Customer Name - Top View: Exterior Complete Expectation",
+    8: "Customer Name - Top View: On-Pad Details",
+    9: "Customer Name - Top View: Interior Conduit Run Details",
+    10: "Customer Name - Conduit and Steel I-Beam Anchoring: Top View",
+    11: "Customer Name - Equipment Attachment: Top View w/ Attachment Specs",
+    12: "Customer Name - West View: Completed Expectation",
+    13: "Customer Name - West View: Conduit Run & Interior",
+    14: "Customer Name - West View: Conduit and Attachment details",
+    15: "Customer Name - East View",
+    16: "Customer Name - South View: Completed Expectation",
+    17: "Customer Name - Conduit Run",
+    18: "Customer Name - Interior Conduit Run Details",
+    19: "Customer Name - South View: Outdoor Detail and Disconnect Details",
+    20: "Customer Name - North View",
+    21: "Customer Name - Concrete Slab Foundation Details",
+    22: "Customer Name - Concrete Slab: Rebar Specification",
+    23: "Customer Name - Concrete Slab: Steel I-Beam Specifications",
+    24: "Customer Name - Single Line Diagram",
+    25: "Customer Name - Line Diagram: Three Line",
+    26: "Customer Name - Electrical Equipment: BESS Specifications",
+    27: "Customer Name - Electrical Equipment: Inverter Specifications",
+    28: "Customer Name - Electrical Equipment: Other Equipment Specifications",
+    29: "Customer Name - Electrical Equipment: Other Equipment Specifications",
+    30: "Customer Name - Electrical Equipment: Dynapower CPS1250",
+    31: "Customer Name - Electrical Equipment: Isolation Transformer",
+    32: "Customer Name - Electrical Equipment: Gotion Edge760",
+    33: "Customer Name - Electrical Equipment: Gotion Edge760",
+    34: "Customer Name - Electrical Equipment: Gotion Edge760",
+    35: "Customer Name - Electrical Equipment: Disconnect & Breaker",
+    36: "Customer Name - Electrical Calculations",
+    37: "Customer Name - General Electrical Notes",
+    38: "Customer Name - Other Lithium Batteries Safety",
+    39: "Customer Name - Required Signage",
+    40: "Customer Name - Fire Supression System: 1",
+    41: "Customer Name - Fire Supression System: 2",
+    42: "Customer Name - Fire Supression System: 3",
+    43: "Customer Name - Fire Supression System: 4",
+    44: "Customer Name - NFPA 855 Compliance: 1",
+    45: "Customer Name - NFPA 855 Compliance: 2",
+    46: "Customer Name - NFPA 855 Compliance: 3",
+    47: "Customer Name - NFPA 855 Compliance: 4",
+    48: "Customer Name - NFPA 855 Compliance: 5",
+    49: "Customer Name - NFPA 855 Compliance: 6",
+}
+
 
 def _profile(
     page_number: int,
@@ -35,7 +87,7 @@ def _profile(
 CORE_SITE_PAGE_PROFILES: list[dict[str, Any]] = [
     _profile(
         1,
-        "Site Plan Overview",
+        "Customer Name - (_kW, _kWh) Energy Storage System.",
         "Primary plan sheet with full site context, BESS placement, POI, and main routing corridor.",
         "fit-all-site-geometry",
         ["cad_ir", "site_plan"],
@@ -44,7 +96,7 @@ CORE_SITE_PAGE_PROFILES: list[dict[str, Any]] = [
     ),
     _profile(
         2,
-        "Site Plan Enlarged Layout",
+        "Customer Name - Property Details",
         "Enlarged equipment-side layout focused on BESS cluster and near-field access clearances.",
         "fit-bess-cluster-with-padding",
         ["cad_ir", "site_plan"],
@@ -53,7 +105,7 @@ CORE_SITE_PAGE_PROFILES: list[dict[str, Any]] = [
     ),
     _profile(
         4,
-        "Cable Routing Plan",
+        "Customer Name - Existing Switchgear",
         "Primary cable path plan from BESS to POI with route geometry and segment callouts.",
         "fit-cable-network",
         ["cad_ir", "site_plan"],
@@ -62,7 +114,7 @@ CORE_SITE_PAGE_PROFILES: list[dict[str, Any]] = [
     ),
     _profile(
         5,
-        "Conduit / Trench Routing",
+        "Customer Name - Main Distribution Panel Detail",
         "Routing variant emphasizing conduit or trench pathing, bends, and transition points.",
         "fit-cable-network-focused",
         ["cad_ir", "site_plan"],
@@ -71,7 +123,7 @@ CORE_SITE_PAGE_PROFILES: list[dict[str, Any]] = [
     ),
     _profile(
         6,
-        "Interconnection Area Plan",
+        "Customer Name - Plan Overview & Total Impact Area",
         "POI-side interconnection zone with terminal equipment context and approach route.",
         "fit-poi-zone-with-buffer",
         ["cad_ir", "site_plan"],
@@ -80,7 +132,7 @@ CORE_SITE_PAGE_PROFILES: list[dict[str, Any]] = [
     ),
     _profile(
         7,
-        "Installation / Access Plan",
+        "Customer Name - Top View: Exterior Complete Expectation",
         "BESS installation and access-oriented plan with placement references and access corridor notes.",
         "fit-bess-and-access-corridor",
         ["cad_ir", "site_plan"],

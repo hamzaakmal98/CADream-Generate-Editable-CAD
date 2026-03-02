@@ -78,6 +78,22 @@ function createDefaultRightPanelMetadata(): RightPanelMetadata {
   };
 }
 
+function triggerFileDownload(blob: Blob, filename: string): void {
+  const forceDownloadBlob =
+    blob.type === "application/octet-stream" ? blob : new Blob([blob], { type: "application/octet-stream" });
+  const url = URL.createObjectURL(forceDownloadBlob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.target = "_self";
+  anchor.rel = "noopener noreferrer";
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export default function App() {
   const stageRef = useRef<Konva.Stage | null>(null);
   const [activeInterface, setActiveInterface] = useState<InterfaceTab>("interactive-site-plan");
@@ -91,6 +107,8 @@ export default function App() {
   const [cadIr, setCadIr] = useState<CadIrDrawing | null>(null);
   const [poi, setPoi] = useState<PointOfInterconnection | null>(null);
   const [rightPanelMetadata, setRightPanelMetadata] = useState<RightPanelMetadata>(createDefaultRightPanelMetadata);
+  const [isExportingPlansetPdf, setIsExportingPlansetPdf] = useState(false);
+  const [plansetPdfProgress, setPlansetPdfProgress] = useState<number | null>(null);
 
   const [stageSize, setStageSize] = useState({
     w: window.innerWidth - SIDEBAR_WIDTH,
@@ -388,7 +406,7 @@ export default function App() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        total_pages: 43,
+        total_pages: 49,
         cad_ir: cadIr,
         site_placements: sitePlacementPayload,
         sld_session: sldEditor.session,
@@ -409,53 +427,101 @@ export default function App() {
     }
 
     const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "planset-pages-24-25.zip";
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
+    triggerFileDownload(blob, "planset-pages-24-25.zip");
   }
 
   async function onExportPagesPdfFromInterfaceA() {
-    const res = await fetch("/api/planset/pages/pdf-export", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        total_pages: 43,
-        cad_ir: cadIr,
-        site_placements: sitePlacementPayload,
-        sld_session: sldEditor.session,
-        right_panel_metadata: rightPanelMetadata,
-      }),
-    });
+    setIsExportingPlansetPdf(true);
+    setPlansetPdfProgress(2);
 
-    if (!res.ok) {
-      let detail = "Failed to generate pages PDF.";
-      try {
-        const err = (await res.json()) as { detail?: string };
-        if (typeof err.detail === "string" && err.detail.trim()) {
-          detail = err.detail;
+    let syntheticProgress = 2;
+    const preparationTimer = window.setInterval(() => {
+      syntheticProgress = Math.min(85, syntheticProgress + Math.max(0.4, (85 - syntheticProgress) * 0.035));
+      setPlansetPdfProgress(Math.round(syntheticProgress));
+    }, 500);
+
+    try {
+      const res = await fetch("/api/planset/pages/pdf-export", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          total_pages: 49,
+          cad_ir: cadIr,
+          site_placements: sitePlacementPayload,
+          sld_session: sldEditor.session,
+          right_panel_metadata: rightPanelMetadata,
+        }),
+      });
+
+      window.clearInterval(preparationTimer);
+
+      if (!res.ok) {
+        let detail = "Failed to generate pages PDF.";
+        try {
+          const err = (await res.json()) as { detail?: string };
+          if (typeof err.detail === "string" && err.detail.trim()) {
+            detail = err.detail;
+          }
+        } catch {
+          // keep default detail
         }
-      } catch {
-        // keep default detail
+        throw new Error(detail);
       }
-      throw new Error(detail);
-    }
 
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "planset-pages.pdf";
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
+      const contentLengthHeader = res.headers.get("Content-Length");
+      const contentLength = contentLengthHeader ? Number(contentLengthHeader) : 0;
+      const reader = res.body?.getReader();
+
+      let blob: Blob;
+
+      setPlansetPdfProgress((prev) => (prev !== null ? Math.max(prev, 88) : 88));
+
+      if (reader) {
+        const chunks: Uint8Array[] = [];
+        let receivedLength = 0;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (!value) continue;
+
+          chunks.push(value);
+          receivedLength += value.length;
+
+          if (contentLength > 0) {
+            const progress = Math.min(100, 88 + Math.round((receivedLength / contentLength) * 12));
+            setPlansetPdfProgress(progress);
+          } else {
+            setPlansetPdfProgress((prev) => {
+              const current = prev ?? 92;
+              return Math.min(99, current + 1);
+            });
+          }
+        }
+
+        const bytes = new Uint8Array(receivedLength);
+        let position = 0;
+        for (const chunk of chunks) {
+          bytes.set(chunk, position);
+          position += chunk.length;
+        }
+        blob = new Blob([bytes], { type: "application/pdf" });
+      } else {
+        blob = await res.blob();
+        setPlansetPdfProgress(100);
+      }
+
+      triggerFileDownload(blob, "planset-pages.pdf");
+      setPlansetPdfProgress(100);
+    } finally {
+      window.clearInterval(preparationTimer);
+      setTimeout(() => {
+        setIsExportingPlansetPdf(false);
+        setPlansetPdfProgress(null);
+      }, 400);
+    }
   }
 
   return (
@@ -540,6 +606,8 @@ export default function App() {
             onLoadProject={onLoadProject}
             onExportDxf={onExportDxf}
             onExportPagesPdf={onExportPagesPdfFromInterfaceA}
+            isExportingPlansetPdf={isExportingPlansetPdf}
+            plansetPdfProgress={plansetPdfProgress}
             rightPanelMetadata={rightPanelMetadata}
             onRightPanelMetadataChange={setRightPanelMetadata}
             onWheel={onWheel}

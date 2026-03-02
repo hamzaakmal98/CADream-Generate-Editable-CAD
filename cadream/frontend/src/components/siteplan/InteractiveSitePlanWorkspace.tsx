@@ -62,6 +62,8 @@ type InteractiveSitePlanWorkspaceProps = {
   onLoadProject: (file: File) => void;
   onExportDxf: () => void;
   onExportPagesPdf: () => void;
+  isExportingPlansetPdf: boolean;
+  plansetPdfProgress: number | null;
   rightPanelMetadata: RightPanelMetadata;
   onRightPanelMetadataChange: (next: RightPanelMetadata) => void;
   onWheel: (e: Konva.KonvaEventObject<WheelEvent>) => void;
@@ -114,6 +116,8 @@ export default function InteractiveSitePlanWorkspace({
   onLoadProject,
   onExportDxf,
   onExportPagesPdf,
+  isExportingPlansetPdf,
+  plansetPdfProgress,
   rightPanelMetadata,
   onRightPanelMetadataChange,
   onWheel,
@@ -154,6 +158,8 @@ export default function InteractiveSitePlanWorkspace({
         onLoadProject={onLoadProject}
         onExportDxf={onExportDxf}
         onExportPagesPdf={onExportPagesPdf}
+        isExportingPlansetPdf={isExportingPlansetPdf}
+        plansetPdfProgress={plansetPdfProgress}
         rightPanelMetadata={rightPanelMetadata}
         onRightPanelMetadataChange={onRightPanelMetadataChange}
         canExportDxf={canExportDxf}
