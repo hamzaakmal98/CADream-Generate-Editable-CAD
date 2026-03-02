@@ -64,6 +64,7 @@ const TOOL_BUTTON_STYLE = {
   textAlign: "center" as const,
   fontSize: 13,
   color: "#0f172a",
+  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.06)",
 } as const;
 const TERMINAL_SNAP_RADIUS = 14;
 const SLD_CANVAS_NODE_HEIGHT = 64;
@@ -127,11 +128,6 @@ export default function SldBuilder({
     e.preventDefault();
     const symbolType = e.dataTransfer.getData("application/x-sld-symbol");
     if (!symbolType) return;
-
-    if (symbolType === "wire") {
-      onSetToolMode("connect");
-      return;
-    }
 
     const point = canvasPoint(e.clientX, e.clientY);
     if (!point) return;
@@ -257,8 +253,6 @@ export default function SldBuilder({
         (edge.to_node_id === nodeId && edge.to_terminal_id === terminalId)
     );
   }
-
-  const isWireMode = session.tool_settings.tool_mode === "connect";
 
   function normalizeSldSession(input: unknown): SldSessionState | null {
     const root = input as Record<string, unknown>;
@@ -424,7 +418,7 @@ export default function SldBuilder({
           borderRight: "1px solid #dbe1ea",
           padding: paletteCollapsed ? "10px 6px" : 10,
           overflow: "auto",
-          background: "#ffffff",
+          background: "linear-gradient(180deg, #ffffff 0%, #eff6ff 100%)",
           transition: "width 0.15s ease",
         }}
       >
@@ -437,7 +431,10 @@ export default function SldBuilder({
           }}
         >
           {!paletteCollapsed && (
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>SLD Symbol Palette</div>
+            <div style={{ display: "grid", gap: 2 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>Interface B • SLD Builder</div>
+              <div style={{ fontSize: 11, color: "#64748b" }}>Symbol Palette</div>
+            </div>
           )}
           <button
             style={{
@@ -461,11 +458,6 @@ export default function SldBuilder({
               key={symbol.type}
               draggable
               onDragStart={(e) => e.dataTransfer.setData("application/x-sld-symbol", symbol.type)}
-              onClick={() => {
-                if (symbol.kind === "wire") {
-                  onSetToolMode("connect");
-                }
-              }}
               style={{
                 border: "1px solid #d8dde6",
                 borderRadius: 6,
@@ -474,31 +466,23 @@ export default function SldBuilder({
                 cursor: "grab",
                 textAlign: "left",
                 fontSize: 13,
-                background:
-                  symbol.kind === "wire" && isWireMode
-                    ? "#e8f0ff"
-                    : "#fafbfc",
+                background: "#ffffff",
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
                 color: "#0f172a",
+                boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
               }}
             >
-              {symbol.kind === "wire" ? (
-                <svg width="28" height="10" viewBox="0 0 28 10" aria-hidden>
-                  <polyline points="1,5 12,5 12,2 27,2" fill="none" stroke="#111" strokeWidth="1.5" />
-                </svg>
-              ) : (
-                <div
-                  style={{
-                    width: 18,
-                    height: 18,
-                    border: "1px solid #777",
-                    borderRadius: 4,
-                    background: "#fff",
-                  }}
-                />
-              )}
+              <div
+                style={{
+                  width: 18,
+                  height: 18,
+                  border: "1px solid #777",
+                  borderRadius: 4,
+                  background: "#fff",
+                }}
+              />
               {symbol.label}
             </div>
           ))}
@@ -526,7 +510,7 @@ export default function SldBuilder({
             flexWrap: "wrap",
             padding: "10px 12px",
             borderBottom: "1px solid #e2e8f0",
-            background: "#ffffff",
+            background: "linear-gradient(90deg, #ffffff 0%, #f8fafc 100%)",
           }}
         >
           {(["select", "connect", "pan"] as SldToolMode[]).map((mode) => (
@@ -593,8 +577,9 @@ export default function SldBuilder({
           >
             {selectedSummary}
           </div>
-          <div style={{ marginLeft: "auto", fontSize: 12, color: "#475569", alignSelf: "center" }}>
-            Nodes: {session.nodes.length} · Edges: {session.edges.length}
+          <div style={{ marginLeft: "auto", display: "grid", justifyItems: "end", alignSelf: "center" }}>
+            <div style={{ fontSize: 11, color: "#64748b", fontWeight: 600 }}>Canvas Status</div>
+            <div style={{ fontSize: 12, color: "#475569" }}>Nodes: {session.nodes.length} · Edges: {session.edges.length}</div>
           </div>
         </div>
 

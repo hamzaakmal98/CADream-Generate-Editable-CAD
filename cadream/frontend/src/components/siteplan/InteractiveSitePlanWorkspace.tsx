@@ -163,14 +163,18 @@ export default function InteractiveSitePlanWorkspace({
           position: "absolute",
           right: 10,
           top: 10,
-          background: "white",
-          padding: 6,
-          border: "1px solid #ddd",
+          background: "#ffffff",
+          padding: "7px 10px",
+          border: "1px solid #dbe3ef",
+          borderRadius: 8,
           fontSize: 12,
+          color: "#334155",
+          boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
         }}
       >
+        <div style={{ fontWeight: 600, fontSize: 11, marginBottom: 2, color: "#0f172a" }}>Interface A • Site Plan</div>
         {doc
-          ? `Entities: ${doc.entities.length} | BESS: ${bessPlacements.length} | POI: ${poi ? "set" : "none"} | Cables: ${cablePaths.length}`
+          ? `Entities ${doc.entities.length} · BESS ${bessPlacements.length} · POI ${poi ? "set" : "none"} · Cables ${cablePaths.length}`
           : "No DXF loaded"}
       </div>
 

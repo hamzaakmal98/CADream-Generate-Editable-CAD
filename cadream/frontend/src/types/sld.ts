@@ -35,9 +35,9 @@ export type SldSymbolDefinition = {
 };
 
 export type SldPaletteItem = {
-  type: SldSymbolType | "wire";
+  type: SldSymbolType;
   label: string;
-  kind: "node" | "wire";
+  kind: "node";
 };
 
 export type SldValidationSeverity = "error" | "warning";

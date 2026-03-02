@@ -40,6 +40,21 @@ const TAB_BUTTON_STYLE = {
   textAlign: "center" as const,
   fontSize: 13,
   fontWeight: 600,
+  color: "#0f172a",
+  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.06)",
+} as const;
+
+const APP_HEADER_TITLE_STYLE = {
+  fontSize: 14,
+  fontWeight: 700,
+  color: "#0f172a",
+  lineHeight: 1.1,
+} as const;
+
+const APP_HEADER_SUBTITLE_STYLE = {
+  fontSize: 11,
+  color: "#64748b",
+  lineHeight: 1.2,
 } as const;
 
 function createDefaultRightPanelMetadata(): RightPanelMetadata {
@@ -494,39 +509,47 @@ export default function App() {
   }
 
   return (
-    <div style={{ height: "100vh", fontFamily: "system-ui", display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: "#f8fafc" }}>
       <div
         style={{
-          height: TAB_BAR_HEIGHT,
+          minHeight: TAB_BAR_HEIGHT,
           display: "flex",
           alignItems: "center",
+          justifyContent: "space-between",
           gap: 8,
-          padding: "0 10px",
-          borderBottom: "1px solid #ddd",
-          background: "#f8f8f8",
+          padding: "6px 10px",
+          borderBottom: "1px solid #e2e8f0",
+          background: "linear-gradient(90deg, #ffffff 0%, #f0f9ff 55%, #eef2ff 100%)",
         }}
       >
-        <button
-          style={{
-            ...TAB_BUTTON_STYLE,
-            background: activeInterface === "interactive-site-plan" ? "#fff" : "#f0f0f0",
-            borderColor: activeInterface === "interactive-site-plan" ? "#888" : "#ddd",
-          }}
-          onClick={() => setActiveInterface("interactive-site-plan")}
-        >
-          Interactive Site Plan
-        </button>
+        <div style={{ display: "grid", gap: 2, marginRight: 8 }}>
+          <div style={APP_HEADER_TITLE_STYLE}>CADream</div>
+          <div style={APP_HEADER_SUBTITLE_STYLE}>BESS PlanSet Workspace</div>
+        </div>
 
-        <button
-          style={{
-            ...TAB_BUTTON_STYLE,
-            background: activeInterface === "single-line-diagram-builder" ? "#fff" : "#f0f0f0",
-            borderColor: activeInterface === "single-line-diagram-builder" ? "#888" : "#ddd",
-          }}
-          onClick={() => setActiveInterface("single-line-diagram-builder")}
-        >
-          Single-Line Diagram Builder
-        </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <button
+            style={{
+              ...TAB_BUTTON_STYLE,
+              background: activeInterface === "interactive-site-plan" ? "#dbeafe" : "#ffffff",
+              borderColor: activeInterface === "interactive-site-plan" ? "#60a5fa" : "#d1d5db",
+            }}
+            onClick={() => setActiveInterface("interactive-site-plan")}
+          >
+            Interface A • Site Plan
+          </button>
+
+          <button
+            style={{
+              ...TAB_BUTTON_STYLE,
+              background: activeInterface === "single-line-diagram-builder" ? "#dbeafe" : "#ffffff",
+              borderColor: activeInterface === "single-line-diagram-builder" ? "#60a5fa" : "#d1d5db",
+            }}
+            onClick={() => setActiveInterface("single-line-diagram-builder")}
+          >
+            Interface B • SLD Builder
+          </button>
+        </div>
       </div>
 
       <div style={{ flex: 1, position: "relative" }}>
