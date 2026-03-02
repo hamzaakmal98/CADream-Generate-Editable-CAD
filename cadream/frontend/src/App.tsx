@@ -14,6 +14,7 @@ import type {
   ToolMode,
 } from "./types/cad";
 import type { CadIrDrawing } from "./types/cadIr";
+import type { RightPanelMetadata } from "./types/planset";
 import {
   boundsFromInsertEntities,
   computeBessMarkerSize,
@@ -34,6 +35,49 @@ const TAB_BUTTON_STYLE = {
   fontWeight: 600,
 } as const;
 
+function createDefaultRightPanelMetadata(): RightPanelMetadata {
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    ac_system_size: "380kW",
+    inverter_model: "Dynapower CPS1250",
+    dc_system_size: "760kWh",
+    bess_model: "Gotion Edge 760",
+    customer_website: "",
+    customer_phone: "",
+    customer_contact: "",
+    ahj: "",
+    designer_company: "CADream",
+    designer_address: "",
+    designer_website: "",
+    designer_phone: "",
+    designer_contact: "",
+    page_notes: "",
+    sheet_metadata: {
+      scale: "As Noted",
+      sheet_title: "",
+      drawn_by: "DG",
+      checked_by: "DG",
+      approved_by: "A",
+      issue_date: today,
+      sheet_number: "01",
+      revision: "A",
+    },
+    title_block: {
+      project_name: "",
+      client_name: "",
+      site_address: "",
+      drawn_by: "DG",
+      checked_by: "DG",
+      approved_by: "A",
+    },
+    engineer_signature_image: {
+      uri: "",
+      mime_type: "",
+      base64: "",
+    },
+  };
+}
+
 export default function App() {
   const stageRef = useRef<Konva.Stage | null>(null);
   const [activeInterface, setActiveInterface] = useState<InterfaceTab>("interactive-site-plan");
@@ -46,6 +90,7 @@ export default function App() {
   const [sourceDxfName, setSourceDxfName] = useState<string | null>(null);
   const [cadIr, setCadIr] = useState<CadIrDrawing | null>(null);
   const [poi, setPoi] = useState<PointOfInterconnection | null>(null);
+  const [rightPanelMetadata, setRightPanelMetadata] = useState<RightPanelMetadata>(createDefaultRightPanelMetadata);
 
   const [stageSize, setStageSize] = useState({
     w: window.innerWidth - SIDEBAR_WIDTH,
@@ -374,6 +419,45 @@ export default function App() {
     URL.revokeObjectURL(url);
   }
 
+  async function onExportPagesPdfFromInterfaceA() {
+    const res = await fetch("/api/planset/pages/pdf-export", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        total_pages: 43,
+        cad_ir: cadIr,
+        site_placements: sitePlacementPayload,
+        sld_session: sldEditor.session,
+        right_panel_metadata: rightPanelMetadata,
+      }),
+    });
+
+    if (!res.ok) {
+      let detail = "Failed to generate pages PDF.";
+      try {
+        const err = (await res.json()) as { detail?: string };
+        if (typeof err.detail === "string" && err.detail.trim()) {
+          detail = err.detail;
+        }
+      } catch {
+        // keep default detail
+      }
+      throw new Error(detail);
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "planset-pages.pdf";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div style={{ height: "100vh", fontFamily: "system-ui", display: "flex", flexDirection: "column" }}>
       <div
@@ -455,6 +539,9 @@ export default function App() {
             onSaveProject={onSaveProject}
             onLoadProject={onLoadProject}
             onExportDxf={onExportDxf}
+            onExportPagesPdf={onExportPagesPdfFromInterfaceA}
+            rightPanelMetadata={rightPanelMetadata}
+            onRightPanelMetadataChange={setRightPanelMetadata}
             onWheel={onWheel}
             onStageMouseDown={onStageMouseDown}
             onStageDragMove={onStageDragMove}

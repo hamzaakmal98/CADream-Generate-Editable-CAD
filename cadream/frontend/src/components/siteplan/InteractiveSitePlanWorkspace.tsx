@@ -13,6 +13,7 @@ import type {
   ToolMode,
 } from "../../types/cad";
 import type { CadIrDrawing } from "../../types/cadIr";
+import type { RightPanelMetadata } from "../../types/planset";
 import PlanSetStatusPanel from "./PlanSetStatusPanel";
 
 type CadIrValidationState = {
@@ -60,6 +61,9 @@ type InteractiveSitePlanWorkspaceProps = {
   onSaveProject: () => void;
   onLoadProject: (file: File) => void;
   onExportDxf: () => void;
+  onExportPagesPdf: () => void;
+  rightPanelMetadata: RightPanelMetadata;
+  onRightPanelMetadataChange: (next: RightPanelMetadata) => void;
   onWheel: (e: Konva.KonvaEventObject<WheelEvent>) => void;
   onStageMouseDown: (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => void;
   onStageDragMove: (e: Konva.KonvaEventObject<Event>) => void;
@@ -109,6 +113,9 @@ export default function InteractiveSitePlanWorkspace({
   onSaveProject,
   onLoadProject,
   onExportDxf,
+  onExportPagesPdf,
+  rightPanelMetadata,
+  onRightPanelMetadataChange,
   onWheel,
   onStageMouseDown,
   onStageDragMove,
@@ -146,6 +153,9 @@ export default function InteractiveSitePlanWorkspace({
         onSaveProject={onSaveProject}
         onLoadProject={onLoadProject}
         onExportDxf={onExportDxf}
+        onExportPagesPdf={onExportPagesPdf}
+        rightPanelMetadata={rightPanelMetadata}
+        onRightPanelMetadataChange={onRightPanelMetadataChange}
         canExportDxf={canExportDxf}
       />
 

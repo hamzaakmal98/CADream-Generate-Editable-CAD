@@ -4,3 +4,16 @@ docs/HACKATHON_DELIVERABLES_ROADMAP.md
 **/__pycache__/
 *.pyc
 
+# Python environments and caches
+**/.venv/
+**/.pytest_cache/
+**/.mypy_cache/
+
+# Frontend dependencies and build outputs
+cadream/frontend/node_modules/
+cadream/frontend/dist/
+
+# OS / editor artifacts
+.DS_Store
+Thumbs.db
+
