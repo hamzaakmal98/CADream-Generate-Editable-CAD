@@ -71,7 +71,7 @@ def _build_sld_entities_for_page(payload: dict[str, Any], page_number: int) -> l
             }
         )
 
-    for index, edge in enumerate(edges, start=1):
+    for edge in edges:
         if not isinstance(edge, dict):
             continue
 
@@ -116,20 +116,6 @@ def _build_sld_entities_for_page(payload: dict[str, Any], page_number: int) -> l
                         },
                     }
                 )
-
-        mid = poly_points[len(poly_points) // 2]
-        entities.append(
-            {
-                "kind": "text",
-                "layer": f"CADREAM-P{page_number}-ANNO",
-                "data": {
-                    "text": f"W-{index:02d}" if page_number == 24 else f"3PH-W-{index:02d}",
-                    "x": mid[0] + 1.5,
-                    "y": mid[1] + 1.5,
-                    "height": 2.0,
-                },
-            }
-        )
 
     return entities
 

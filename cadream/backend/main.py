@@ -5,8 +5,12 @@ from cad_parser import dxf_to_render_json, extract_blocks, load_dxf_from_bytes
 from cad_export import export_dxf_from_cad_ir, export_dxf_from_source_bytes
 from cad_ir_validation import validate_cad_ir_payload
 from planset_manifest import build_plan_set_manifest
+from planset_pdf_export import generate_planset_pages_pdf
 from planset_payload_stubs import build_plan_set_payload_stubs
+from planset_right_panel_validation import validate_right_panel_payload
+from planset_site_page_profiles import get_site_page_profile, get_site_page_profiles
 from planset_sld_pages import export_sld_vertical_slice_zip
+from planset_template_sample import generate_common_template_sample_dxf
 import hashlib
 
 SOURCE_DXF_CACHE: dict[str, bytes] = {}
@@ -124,3 +128,67 @@ async def export_planset_vertical_slice_pages_24_25(payload: dict):
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Plan-set pages 24/25 export failed: {repr(e)}")
+
+
+@app.get("/planset/site-page-profiles")
+async def get_planset_site_page_profiles(include_follow_on: bool = True):
+    return get_site_page_profiles(include_follow_on=include_follow_on)
+
+
+@app.get("/planset/site-page-profiles/{page_number}")
+async def get_planset_site_page_profile(page_number: int):
+    profile = get_site_page_profile(page_number)
+    if profile is None:
+        raise HTTPException(status_code=404, detail=f"No locked site-page profile for page {page_number}")
+    return {
+        "schema_version": "site-page-profiles-v1",
+        "profile": profile,
+    }
+
+
+@app.post("/planset/template-sample/export")
+async def export_planset_template_sample(payload: dict):
+    try:
+        metadata_payload = payload.get("right_panel_metadata")
+        if metadata_payload is None:
+            metadata_payload = payload
+        if not isinstance(metadata_payload, dict):
+            raise HTTPException(status_code=400, detail="right_panel_metadata must be an object")
+        validation_errors = validate_right_panel_payload(metadata_payload)
+        if validation_errors:
+            raise HTTPException(
+                status_code=400,
+                detail="Right panel metadata validation failed: " + "; ".join(validation_errors),
+            )
+        dxf_bytes = generate_common_template_sample_dxf(payload)
+        return Response(
+            content=dxf_bytes,
+            media_type="application/dxf",
+            headers={"Content-Disposition": "attachment; filename=planset-template-sample.dxf"},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Template sample export failed: {repr(e)}")
+
+
+@app.post("/planset/pages/pdf-export")
+async def export_planset_pages_pdf(payload: dict):
+    try:
+        metadata_payload = payload.get("right_panel_metadata")
+        if metadata_payload is None:
+            metadata_payload = payload
+        if not isinstance(metadata_payload, dict):
+            raise HTTPException(status_code=400, detail="right_panel_metadata must be an object")
+        validation_errors = validate_right_panel_payload(metadata_payload)
+        if validation_errors:
+            raise HTTPException(
+                status_code=400,
+                detail="Right panel metadata validation failed: " + "; ".join(validation_errors),
+            )
+        pdf_bytes = generate_planset_pages_pdf(payload)
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=planset-pages.pdf"},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Plan-set pages PDF export failed: {repr(e)}")

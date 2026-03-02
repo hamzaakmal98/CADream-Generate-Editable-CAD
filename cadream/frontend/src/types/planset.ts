@@ -43,3 +43,45 @@ export type PlanSetPayloadStubsResponse = {
   manifest: PlanSetManifest;
   page_payloads: PlanSetPayloadStubItem[];
 };
+
+export type EngineerSignatureImage = {
+  uri: string;
+  mime_type: string;
+  base64: string;
+};
+
+export type RightPanelMetadata = {
+  ac_system_size: string;
+  inverter_model: string;
+  dc_system_size: string;
+  bess_model: string;
+  customer_website: string;
+  customer_phone: string;
+  customer_contact: string;
+  ahj: string;
+  designer_company: string;
+  designer_address: string;
+  designer_website: string;
+  designer_phone: string;
+  designer_contact: string;
+  page_notes: string;
+  sheet_metadata: {
+    scale: string;
+    sheet_title: string;
+    drawn_by: string;
+    checked_by: string;
+    approved_by: string;
+    issue_date: string;
+    sheet_number: string;
+    revision: string;
+  };
+  title_block: {
+    project_name: string;
+    client_name: string;
+    site_address: string;
+    drawn_by: string;
+    checked_by: string;
+    approved_by: string;
+  };
+  engineer_signature_image: EngineerSignatureImage;
+};

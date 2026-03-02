@@ -454,7 +454,6 @@ def _draw_sld_nodes(
     node_points: dict[str, tuple[float, float]],
     *,
     equip_layer: str,
-    annotation_layer: str,
 ) -> None:
     for node in nodes:
         symbol_type = node["symbol_type"]
@@ -586,13 +585,11 @@ def _build_page_doc(
     border_layer = f"CADREAM-P{page_number}-BORDER"
     equip_layer = f"CADREAM-P{page_number}-EQUIP"
     wire_layer = f"CADREAM-P{page_number}-WIRE"
-    annotation_layer = f"CADREAM-P{page_number}-ANNO"
     title_layer = f"CADREAM-P{page_number}-TITLE"
 
     _ensure_layer(doc, border_layer, 8)
     _ensure_layer(doc, equip_layer, 7)
     _ensure_layer(doc, wire_layer, 3)
-    _ensure_layer(doc, annotation_layer, 2)
     _ensure_layer(doc, title_layer, 5)
 
     _draw_page_template(
@@ -622,7 +619,6 @@ def _build_page_doc(
         nodes,
         node_points,
         equip_layer=equip_layer,
-        annotation_layer=annotation_layer,
     )
 
     projected_edges: list[dict[str, Any]] = []

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cadream/schemas/right-panel-metadata-v1.schema.json",
+  "title": "Right Panel Metadata v1",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "ac_system_size": { "type": "string" },
+    "inverter_model": { "type": "string" },
+    "dc_system_size": { "type": "string" },
+    "bess_model": { "type": "string" },
+
+    "customer_website": { "type": "string" },
+    "customer_phone": { "type": "string" },
+    "customer_contact": { "type": "string" },
+
+    "ahj": { "type": "string" },
+
+    "designer_company": { "type": "string" },
+    "designer_address": { "type": "string" },
+    "designer_website": { "type": "string" },
+    "designer_phone": { "type": "string" },
+    "designer_contact": { "type": "string" },
+
+    "page_notes": { "type": "string" },
+
+    "sheet_metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "scale": { "type": "string" },
+        "sheet_title": { "type": "string" },
+        "drawn_by": { "type": "string" },
+        "checked_by": { "type": "string" },
+        "approved_by": { "type": "string" },
+        "issue_date": { "type": "string" },
+        "sheet_number": { "type": "string" },
+        "revision": { "type": "string" }
+      }
+    },
+
+    "title_block": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "project_name": { "type": "string" },
+        "client_name": { "type": "string" },
+        "site_address": { "type": "string" },
+        "drawn_by": { "type": "string" },
+        "checked_by": { "type": "string" },
+        "approved_by": { "type": "string" }
+      }
+    },
+
+    "engineer_signature_image": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "uri": { "type": "string" },
+        "mime_type": { "type": "string" },
+        "base64": { "type": "string" }
+      }
+    }
+  }
+}
