@@ -326,16 +326,19 @@ def _append_site_plan_to_layout(
         xscale = _safe_scale(ins.get("xScale", ins.get("xscale", 1.0)) if isinstance(ins, dict) else 1.0)
         yscale = _safe_scale(ins.get("yScale", ins.get("yscale", 1.0)) if isinstance(ins, dict) else 1.0)
 
+        inserted_source_block = False
         if isinstance(block_name, str) and block_name in doc.blocks:
             ref = layout.add_blockref(block_name, (x, y), dxfattribs={"layer": bess_layer, "color": 3})
             ref.dxf.rotation = rotation
             ref.dxf.xscale = xscale
             ref.dxf.yscale = yscale
+            inserted_source_block = True
 
-        generic_ref = layout.add_blockref(generic_bess_block, (x, y), dxfattribs={"layer": bess_layer, "color": 3})
-        generic_ref.dxf.rotation = rotation
-        generic_ref.dxf.xscale = xscale
-        generic_ref.dxf.yscale = yscale
+        if not inserted_source_block:
+            generic_ref = layout.add_blockref(generic_bess_block, (x, y), dxfattribs={"layer": bess_layer, "color": 3})
+            generic_ref.dxf.rotation = rotation
+            generic_ref.dxf.xscale = xscale
+            generic_ref.dxf.yscale = yscale
 
         _add_bess_marker(layout, x, y, bess_layer)
 

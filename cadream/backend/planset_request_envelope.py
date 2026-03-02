@@ -32,6 +32,13 @@ def _to_float(value: Any, default: float = 0.0) -> float:
         return default
 
 
+def _to_optional_float(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _normalize_project_metadata(payload: dict[str, Any]) -> dict[str, Any]:
     right_panel = payload.get("right_panel_metadata") if isinstance(payload.get("right_panel_metadata"), dict) else payload
     title_block = right_panel.get("title_block") if isinstance(right_panel.get("title_block"), dict) else {}
@@ -74,13 +81,26 @@ def _normalize_site_design_spec(payload: dict[str, Any]) -> dict[str, Any]:
     for index, bess in enumerate(raw_bess, start=1):
         if not isinstance(bess, dict):
             continue
-        position = bess.get("cad_position") if isinstance(bess.get("cad_position"), dict) else {}
+        position = (
+            bess.get("cad_position")
+            if isinstance(bess.get("cad_position"), dict)
+            else (bess.get("position") if isinstance(bess.get("position"), dict) else None)
+        )
+        if not isinstance(position, dict):
+            continue
+
         insert = bess.get("cad_insert") if isinstance(bess.get("cad_insert"), dict) else {}
+
+        x = _to_optional_float(position.get("x"))
+        y = _to_optional_float(position.get("y"))
+        if x is None or y is None:
+            continue
+
         bess_items.append(
             {
                 "id": _safe_str(bess.get("id"), f"bess-{index}"),
-                "x": _to_float(position.get("x")),
-                "y": _to_float(position.get("y")),
+                "x": x,
+                "y": y,
                 "rotation": _to_float(insert.get("rotation")),
                 "scale": max(0.0001, _to_float(insert.get("xscale"), 1.0)),
             }
@@ -89,11 +109,14 @@ def _normalize_site_design_spec(payload: dict[str, Any]) -> dict[str, Any]:
     poi_raw = entities.get("poi") if isinstance(entities.get("poi"), dict) else None
     poi = None
     if isinstance(poi_raw, dict):
-        poi = {
-            "x": _to_float(poi_raw.get("x")),
-            "y": _to_float(poi_raw.get("y")),
-            "label": _safe_str(poi_raw.get("label"), "POI"),
-        }
+        x = _to_optional_float(poi_raw.get("x"))
+        y = _to_optional_float(poi_raw.get("y"))
+        if x is not None and y is not None:
+            poi = {
+                "x": x,
+                "y": y,
+                "label": _safe_str(poi_raw.get("label"), "POI"),
+            }
 
     cables: list[dict[str, Any]] = []
     raw_cables = entities.get("cable_paths") if isinstance(entities.get("cable_paths"), list) else []
@@ -104,7 +127,17 @@ def _normalize_site_design_spec(payload: dict[str, Any]) -> dict[str, Any]:
         points = []
         for point in raw_points:
             if isinstance(point, list) and len(point) >= 2:
-                points.append({"x": _to_float(point[0]), "y": _to_float(point[1])})
+                x = _to_optional_float(point[0])
+                y = _to_optional_float(point[1])
+                if x is None or y is None:
+                    continue
+                points.append({"x": x, "y": y})
+            elif isinstance(point, dict):
+                x = _to_optional_float(point.get("x"))
+                y = _to_optional_float(point.get("y"))
+                if x is None or y is None:
+                    continue
+                points.append({"x": x, "y": y})
         if len(points) < 2:
             continue
         cables.append(
