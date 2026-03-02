@@ -5,6 +5,7 @@ from io import BytesIO
 from typing import Any
 from zipfile import ZIP_DEFLATED, ZipFile
 
+from cad_export import export_dxf_from_source_bytes
 from planset_auto_pages_dxf import generate_auto_pages_dxf_files
 from planset_manifest import build_plan_set_manifest
 from planset_pdf_export import generate_planset_fixed_pages_pdf, generate_planset_pages_pdf
@@ -27,6 +28,7 @@ def _build_export_manifest(
     *,
     manifest: dict[str, Any],
     auto_files: dict[str, bytes],
+    dxf_export_mode: str,
     include_pdf_artifacts: bool,
     pdf_artifact_errors: list[str],
 ) -> dict[str, Any]:
@@ -45,6 +47,7 @@ def _build_export_manifest(
         "package": {
             "format": "zip",
             "dxf_first": True,
+            "dxf_export_mode": dxf_export_mode,
             "dwg_conversion": {
                 "configured": False,
                 "hook": None,
@@ -78,9 +81,22 @@ def _build_export_manifest(
     }
 
 
+def _build_dxf_artifacts(payload: dict[str, Any]) -> tuple[dict[str, bytes], str]:
+    source_bytes = payload.get("__source_dxf_bytes")
+    site_placements = payload.get("site_placements")
+
+    if isinstance(source_bytes, (bytes, bytearray)) and isinstance(site_placements, dict):
+        preserved_bytes = export_dxf_from_source_bytes(bytes(source_bytes), site_placements)
+        source_name = payload.get("source_file_name")
+        file_stem = source_name.rsplit(".", 1)[0] if isinstance(source_name, str) and source_name.strip() else "planset"
+        return {f"{file_stem}-preserved.dxf": preserved_bytes}, "preserved-source"
+
+    return generate_auto_pages_dxf_files(payload)
+
+
 def export_planset_package_zip(payload: dict[str, Any]) -> bytes:
     manifest = build_plan_set_manifest(payload)
-    auto_files = generate_auto_pages_dxf_files(payload)
+    auto_files, dxf_export_mode = _build_dxf_artifacts(payload)
     include_pdf_artifacts = bool(payload.get("include_pdf_artifacts"))
 
     full_pdf_bytes: bytes | None = None
@@ -96,6 +112,7 @@ def export_planset_package_zip(payload: dict[str, Any]) -> bytes:
     export_manifest = _build_export_manifest(
         manifest=manifest,
         auto_files=auto_files,
+        dxf_export_mode=dxf_export_mode,
         include_pdf_artifacts=include_pdf_artifacts,
         pdf_artifact_errors=pdf_artifact_errors,
     )

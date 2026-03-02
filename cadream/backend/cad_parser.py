@@ -1,4 +1,4 @@
-from io import BytesIO
+from io import BytesIO, StringIO
 from typing import Any
 
 import ezdxf
@@ -234,6 +234,23 @@ def load_dxf_from_bytes(data: bytes) -> ezdxf.document.Drawing:
     try:
         return ezdxf.read(stream)
     except Exception:
+        for encoding in ("utf-8", "latin-1"):
+            try:
+                text_stream = StringIO(data.decode(encoding, errors="strict"))
+                return ezdxf.read(text_stream)
+            except Exception:
+                continue
+
         stream.seek(0)
-        document, _auditor = recover.read(stream)
-        return document
+        try:
+            document, _auditor = recover.read(stream)
+            return document
+        except Exception:
+            for encoding in ("utf-8", "latin-1"):
+                try:
+                    text_stream = StringIO(data.decode(encoding, errors="ignore"))
+                    document, _auditor = recover.read(text_stream)
+                    return document
+                except Exception:
+                    continue
+            raise

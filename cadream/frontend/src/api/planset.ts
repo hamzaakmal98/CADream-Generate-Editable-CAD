@@ -3,6 +3,8 @@ type ExportRequestPayload = {
   cad_ir: unknown;
   site_placements: unknown;
   sld_session: unknown;
+  source_token?: string;
+  source_file_name?: string;
   right_panel_metadata?: unknown;
 };
 
@@ -43,6 +45,15 @@ export async function exportAutoPagesZip(payload: ExportRequestPayload): Promise
     "/api/planset/auto-pages/export",
     payload,
     "Failed to export auto pages DXF zip.",
+  );
+  return response.blob();
+}
+
+export async function exportPreservedPlansetDxf(payload: ExportRequestPayload): Promise<Blob> {
+  const response = await postBinary(
+    "/api/planset/preserved-dxf/export",
+    payload,
+    "Failed to export preserved detailed DXF.",
   );
   return response.blob();
 }
