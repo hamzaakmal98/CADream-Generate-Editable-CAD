@@ -7,6 +7,7 @@ import { useBessEditing } from "./hooks/useBessEditing";
 import { useCableRouting } from "./hooks/useCableRouting";
 import { useProjectActions } from "./hooks/useProjectActions";
 import { useSldEditor } from "./hooks/useSldEditor";
+import { exportPages2425Zip, exportPlansetPdfResponse } from "./api/planset";
 import type {
   PointOfInterconnection,
   RenderDoc,
@@ -400,33 +401,12 @@ export default function App() {
   }
 
   async function onExportPages2425FromSldBuilder() {
-    const res = await fetch("/api/planset/pages-24-25/export", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        total_pages: 49,
-        cad_ir: cadIr,
-        site_placements: sitePlacementPayload,
-        sld_session: sldEditor.session,
-      }),
+    const blob = await exportPages2425Zip({
+      total_pages: 49,
+      cad_ir: cadIr,
+      site_placements: sitePlacementPayload,
+      sld_session: sldEditor.session,
     });
-
-    if (!res.ok) {
-      let detail = "Failed to export pages 24/25 DXF zip.";
-      try {
-        const err = (await res.json()) as { detail?: string };
-        if (typeof err.detail === "string" && err.detail.trim()) {
-          detail = err.detail;
-        }
-      } catch {
-        // keep default detail
-      }
-      throw new Error(detail);
-    }
-
-    const blob = await res.blob();
     triggerFileDownload(blob, "planset-pages-24-25.zip");
   }
 
@@ -441,34 +421,15 @@ export default function App() {
     }, 500);
 
     try {
-      const res = await fetch("/api/planset/pages/pdf-export", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          total_pages: 49,
-          cad_ir: cadIr,
-          site_placements: sitePlacementPayload,
-          sld_session: sldEditor.session,
-          right_panel_metadata: rightPanelMetadata,
-        }),
+      const res = await exportPlansetPdfResponse({
+        total_pages: 49,
+        cad_ir: cadIr,
+        site_placements: sitePlacementPayload,
+        sld_session: sldEditor.session,
+        right_panel_metadata: rightPanelMetadata,
       });
 
       window.clearInterval(preparationTimer);
-
-      if (!res.ok) {
-        let detail = "Failed to generate pages PDF.";
-        try {
-          const err = (await res.json()) as { detail?: string };
-          if (typeof err.detail === "string" && err.detail.trim()) {
-            detail = err.detail;
-          }
-        } catch {
-          // keep default detail
-        }
-        throw new Error(detail);
-      }
 
       const contentLengthHeader = res.headers.get("Content-Length");
       const contentLength = contentLengthHeader ? Number(contentLengthHeader) : 0;
