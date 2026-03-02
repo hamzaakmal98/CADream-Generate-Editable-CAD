@@ -7,7 +7,7 @@ import { useBessEditing } from "./hooks/useBessEditing";
 import { useCableRouting } from "./hooks/useCableRouting";
 import { useProjectActions } from "./hooks/useProjectActions";
 import { useSldEditor } from "./hooks/useSldEditor";
-import { exportPages2425Zip, exportPlansetPdfResponse } from "./api/planset";
+import { exportAutoPagesZip, exportPlansetPdfResponse } from "./api/planset";
 import type {
   PointOfInterconnection,
   RenderDoc,
@@ -27,11 +27,17 @@ type InterfaceTab = "interactive-site-plan" | "single-line-diagram-builder";
 
 const TAB_BAR_HEIGHT = 44;
 const TAB_BUTTON_STYLE = {
+  minHeight: 34,
+  minWidth: 150,
   padding: "8px 12px",
   borderRadius: 6,
   border: "1px solid #ddd",
   background: "#fff",
   cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  textAlign: "center" as const,
   fontSize: 13,
   fontWeight: 600,
 } as const;
@@ -400,8 +406,8 @@ export default function App() {
     });
   }
 
-  async function onExportPages2425FromSldBuilder() {
-    const blob = await exportPages2425Zip({
+  async function onExportAutoPages() {
+    const blob = await exportAutoPagesZip({
       total_pages: 49,
       cad_ir: cadIr,
       site_placements: sitePlacementPayload,
@@ -541,9 +547,6 @@ export default function App() {
             bessMarkerSize={bessMarkerSize}
             poiMarkerSize={poiMarkerSize}
             bessSizeFactor={bessSizeFactor}
-            cadIr={cadIr}
-            sitePlacementPayload={sitePlacementPayload}
-            sldSession={sldEditor.session}
             cadIrValidationState={cadIrValidationState}
             canExportDxf={cadIr !== null}
             onDismissValidation={() => setCadIrValidationState(null)}
@@ -566,6 +569,7 @@ export default function App() {
             onSaveProject={onSaveProject}
             onLoadProject={onLoadProject}
             onExportDxf={onExportDxf}
+            onExportAutoPages={onExportAutoPages}
             onExportPagesPdf={onExportPagesPdfFromInterfaceA}
             isExportingPlansetPdf={isExportingPlansetPdf}
             plansetPdfProgress={plansetPdfProgress}
@@ -604,7 +608,6 @@ export default function App() {
             onCancelDrafts={sldEditor.cancelDrafts}
             onClearAll={sldEditor.clearAll}
             onLoadSession={sldEditor.loadSession}
-            onExportPages2425={onExportPages2425FromSldBuilder}
           />
         )}
       </div>

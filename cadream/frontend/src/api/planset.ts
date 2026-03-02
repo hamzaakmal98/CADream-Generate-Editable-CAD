@@ -38,7 +38,7 @@ async function postBinary(
   return response;
 }
 
-export async function exportPages2425Zip(payload: ExportRequestPayload): Promise<Blob> {
+export async function exportAutoPagesZip(payload: ExportRequestPayload): Promise<Blob> {
   const response = await postBinary(
     "/api/planset/auto-pages/export",
     payload,

@@ -3,7 +3,24 @@ import type { BessPlacement, CablePath, RenderDoc, ToolMode } from "../types/cad
 import type { RightPanelMetadata } from "../types/planset";
 import { SIDEBAR_WIDTH } from "../constants/ui";
 
-const BUTTON_STYLE = { padding: "6px 10px" };
+const BUTTON_STYLE = {
+  minHeight: 34,
+  minWidth: 0,
+  padding: "6px 10px",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  textAlign: "center" as const,
+  flex: "1 1 0",
+  maxWidth: "100%",
+  boxSizing: "border-box" as const,
+};
+
+const SECTION_TOGGLE_STYLE = {
+  ...BUTTON_STYLE,
+  width: "100%",
+  justifyContent: "space-between",
+};
 
 const TOOL_BUTTONS: Array<{ mode: ToolMode; label: string; requiresDoc: boolean }> = [
   { mode: "pan", label: "Pan", requiresDoc: false },
@@ -45,6 +62,7 @@ type ControlPanelProps = {
   onSaveProject: () => void;
   onLoadProject: (file: File) => void;
   onExportDxf: () => void;
+  onExportAutoPages: () => void;
   onExportPagesPdf: () => void;
   isExportingPlansetPdf: boolean;
   plansetPdfProgress: number | null;
@@ -79,6 +97,7 @@ export default function ControlPanel({
   onSaveProject,
   onLoadProject,
   onExportDxf,
+  onExportAutoPages,
   onExportPagesPdf,
   isExportingPlansetPdf,
   plansetPdfProgress,
@@ -88,6 +107,9 @@ export default function ControlPanel({
 }: ControlPanelProps) {
   const loadProjectInputRef = useRef<HTMLInputElement | null>(null);
   const [showMetadataForm, setShowMetadataForm] = useState(false);
+  const [showProjectActions, setShowProjectActions] = useState(false);
+  const [showSiteEditing, setShowSiteEditing] = useState(true);
+  const [showLayers, setShowLayers] = useState(false);
 
   function setRootField<K extends keyof RightPanelMetadata>(key: K, value: RightPanelMetadata[K]) {
     onRightPanelMetadataChange({
@@ -143,31 +165,13 @@ export default function ControlPanel({
         Fit to Drawing
       </button>
 
-      <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-        <button style={BUTTON_STYLE} onClick={onSaveProject}>
-          Save CADream Project
-        </button>
+      <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
         <button
-          style={BUTTON_STYLE}
-          onClick={() => loadProjectInputRef.current?.click()}
+          style={{ ...BUTTON_STYLE, width: "100%" }}
+          disabled={!doc}
+          onClick={onExportAutoPages}
         >
-          Load CADream Project
-        </button>
-        <button
-          style={BUTTON_STYLE}
-          disabled={!canExportDxf}
-          onClick={onExportDxf}
-        >
-          Export Editable DXF
-        </button>
-      </div>
-
-      <div style={{ marginTop: 8 }}>
-        <button
-          style={{ ...BUTTON_STYLE, width: "100%", marginBottom: 6 }}
-          onClick={() => setShowMetadataForm((prev) => !prev)}
-        >
-          {showMetadataForm ? "Hide PlanSet MetaData" : "Enter PlanSet MetaData"}
+          Generate Auto Pages (DXF)
         </button>
         <button
           style={{ ...BUTTON_STYLE, width: "100%" }}
@@ -175,6 +179,44 @@ export default function ControlPanel({
           onClick={onExportPagesPdf}
         >
           {isExportingPlansetPdf ? "Generating PlanSet PDF..." : "Generate PlanSet PDF"}
+        </button>
+      </div>
+
+      <button
+        style={{ ...SECTION_TOGGLE_STYLE, marginTop: 8 }}
+        onClick={() => setShowProjectActions((prev) => !prev)}
+      >
+        <span>Project Actions</span>
+        <span>{showProjectActions ? "−" : "+"}</span>
+      </button>
+
+      {showProjectActions && (
+        <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+          <button style={BUTTON_STYLE} onClick={onSaveProject}>
+            Save CADream Project
+          </button>
+          <button
+            style={BUTTON_STYLE}
+            onClick={() => loadProjectInputRef.current?.click()}
+          >
+            Load CADream Project
+          </button>
+          <button
+            style={BUTTON_STYLE}
+            disabled={!canExportDxf}
+            onClick={onExportDxf}
+          >
+            Export Editable DXF
+          </button>
+        </div>
+      )}
+
+      <div style={{ marginTop: 8 }}>
+        <button
+          style={{ ...BUTTON_STYLE, width: "100%", marginBottom: 6 }}
+          onClick={() => setShowMetadataForm((prev) => !prev)}
+        >
+          {showMetadataForm ? "Hide PlanSet MetaData" : "Enter PlanSet MetaData"}
         </button>
         {(isExportingPlansetPdf || plansetPdfProgress !== null) && (
           <div style={{ marginTop: 6 }}>
@@ -266,114 +308,137 @@ export default function ControlPanel({
 
       <hr />
 
-      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Site Editing</div>
+      <button
+        style={SECTION_TOGGLE_STYLE}
+        onClick={() => setShowSiteEditing((prev) => !prev)}
+      >
+        <span>Site Editing</span>
+        <span>{showSiteEditing ? "−" : "+"}</span>
+      </button>
 
-      <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-        {TOOL_BUTTONS.map((tool) => (
-          <button
-            key={tool.mode}
-            style={{ ...BUTTON_STYLE, background: toolMode === tool.mode ? "#eee" : "white" }}
-            disabled={tool.requiresDoc && !doc}
-            onClick={() => onSetToolMode(tool.mode)}
-          >
-            {tool.label}
-          </button>
-        ))}
-      </div>
+      {showSiteEditing && (
+        <>
+          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, marginTop: 8 }}>Site Editing</div>
 
-      <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-        <button
-          style={BUTTON_STYLE}
-          disabled={selectedBessId === null}
-          onClick={onDeleteSelectedBess}
-        >
-          Delete Selected
-        </button>
-        <button style={BUTTON_STYLE} disabled={bessPlacements.length === 0} onClick={onClearBess}>
-          Clear BESS
-        </button>
-      </div>
+          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+            {TOOL_BUTTONS.map((tool) => (
+              <button
+                key={tool.mode}
+                style={{ ...BUTTON_STYLE, background: toolMode === tool.mode ? "#eee" : "white" }}
+                disabled={tool.requiresDoc && !doc}
+                onClick={() => onSetToolMode(tool.mode)}
+              >
+                {tool.label}
+              </button>
+            ))}
+          </div>
 
-      <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>{TOOL_HINTS[toolMode]}</div>
+          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+            <button
+              style={BUTTON_STYLE}
+              disabled={selectedBessId === null}
+              onClick={onDeleteSelectedBess}
+            >
+              Delete Selected
+            </button>
+            <button style={BUTTON_STYLE} disabled={bessPlacements.length === 0} onClick={onClearBess}>
+              Clear BESS
+            </button>
+          </div>
 
-      <div style={{ fontSize: 12, color: "#666" }}>Placed BESS: {bessPlacements.length}</div>
-      <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>POI: {hasPoi ? "set" : "not set"}</div>
+          <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>{TOOL_HINTS[toolMode]}</div>
 
-      <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-        <button style={BUTTON_STYLE} disabled={!hasPoi} onClick={onClearPoi}>
-          Clear POI
-        </button>
-      </div>
+          <div style={{ fontSize: 12, color: "#666" }}>Placed BESS: {bessPlacements.length}</div>
+          <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>POI: {hasPoi ? "set" : "not set"}</div>
 
-      <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
-        Cable paths: {cablePaths.length}
-      </div>
+          <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+            <button style={BUTTON_STYLE} disabled={!hasPoi} onClick={onClearPoi}>
+              Clear POI
+            </button>
+          </div>
 
-      <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-        <button
-          style={BUTTON_STYLE}
-          disabled={draftCablePoints.length < 2 || !hasPoi}
-          onClick={onFinishCable}
-        >
-          Finish Cable
-        </button>
-        <button
-          style={BUTTON_STYLE}
-          disabled={draftCablePoints.length === 0}
-          onClick={onCancelCableDraft}
-        >
-          Cancel Draft
-        </button>
-      </div>
+          <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+            Cable paths: {cablePaths.length}
+          </div>
 
-      <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-        <button
-          style={BUTTON_STYLE}
-          disabled={selectedCableId === null}
-          onClick={onDeleteSelectedCable}
-        >
-          Delete Cable
-        </button>
-        <button
-          style={BUTTON_STYLE}
-          disabled={cablePaths.length === 0}
-          onClick={onClearCables}
-        >
-          Clear Cables
-        </button>
-      </div>
+          <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+            <button
+              style={BUTTON_STYLE}
+              disabled={draftCablePoints.length < 2 || !hasPoi}
+              onClick={onFinishCable}
+            >
+              Finish Cable
+            </button>
+            <button
+              style={BUTTON_STYLE}
+              disabled={draftCablePoints.length === 0}
+              onClick={onCancelCableDraft}
+            >
+              Cancel Draft
+            </button>
+          </div>
 
-      <div style={{ marginTop: 8 }}>
-        <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
-          BESS size: {bessSizeFactor.toFixed(1)}x
-        </div>
-        <input
-          type="range"
-          min={0.4}
-          max={2.5}
-          step={0.1}
-          value={bessSizeFactor}
-          onChange={(e) => onSetBessSizeFactor(Number(e.target.value))}
-          style={{ width: "100%" }}
-        />
-      </div>
+          <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+            <button
+              style={BUTTON_STYLE}
+              disabled={selectedCableId === null}
+              onClick={onDeleteSelectedCable}
+            >
+              Delete Cable
+            </button>
+            <button
+              style={BUTTON_STYLE}
+              disabled={cablePaths.length === 0}
+              onClick={onClearCables}
+            >
+              Clear Cables
+            </button>
+          </div>
+
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
+              BESS size: {bessSizeFactor.toFixed(1)}x
+            </div>
+            <input
+              type="range"
+              min={0.4}
+              max={2.5}
+              step={0.1}
+              value={bessSizeFactor}
+              onChange={(e) => onSetBessSizeFactor(Number(e.target.value))}
+              style={{ width: "100%" }}
+            />
+          </div>
+        </>
+      )}
 
       <hr />
 
-      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Layers</div>
-      {!doc && <div style={{ fontSize: 12, color: "#666" }}>Upload a DXF to begin.</div>}
+      <button
+        style={SECTION_TOGGLE_STYLE}
+        onClick={() => setShowLayers((prev) => !prev)}
+      >
+        <span>Layers</span>
+        <span>{showLayers ? "−" : "+"}</span>
+      </button>
 
-      {doc?.layers?.slice(0, 400).map((layer) => (
-        <label key={layer.name} style={{ display: "block", fontSize: 12, cursor: "pointer" }}>
-          <input
-            type="checkbox"
-            checked={!hiddenLayers[layer.name]}
-            onChange={() => onToggleLayer(layer.name)}
-            style={{ marginRight: 6 }}
-          />
-          {layer.name}
-        </label>
-      ))}
+      {showLayers && (
+        <>
+          {!doc && <div style={{ fontSize: 12, color: "#666", marginTop: 8 }}>Upload a DXF to begin.</div>}
+
+          {doc?.layers?.slice(0, 400).map((layer) => (
+            <label key={layer.name} style={{ display: "block", fontSize: 12, cursor: "pointer", marginTop: 4 }}>
+              <input
+                type="checkbox"
+                checked={!hiddenLayers[layer.name]}
+                onChange={() => onToggleLayer(layer.name)}
+                style={{ marginRight: 6 }}
+              />
+              {layer.name}
+            </label>
+          ))}
+        </>
+      )}
     </div>
   );
 }
