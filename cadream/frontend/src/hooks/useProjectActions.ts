@@ -195,15 +195,6 @@ export function useProjectActions({
   }
 
   async function onExportDxf() {
-    if (!doc?.source_token) {
-      setCadIrValidationState({
-        level: "error",
-        title: "Export Unavailable",
-        messages: ["Please upload the source DXF in this session before exporting."],
-      });
-      return;
-    }
-
     const exportCadIr = buildCurrentCadIr();
 
     if (!exportCadIr) {
@@ -231,7 +222,7 @@ export function useProjectActions({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          source_token: doc.source_token,
+          source_token: doc?.source_token,
           site_placements: sitePlacementPayload,
           cad_ir: exportCadIr,
           source_file_name: normalizedFileBase,
@@ -324,23 +315,51 @@ export function useProjectActions({
     const fd = new FormData();
     fd.append("file", file);
 
-    const res = await fetch("/api/dxf/parse", {
-      method: "POST",
-      body: fd,
-    });
+    try {
+      const res = await fetch("/api/dxf/parse", {
+        method: "POST",
+        body: fd,
+      });
 
-    const data = (await res.json()) as RenderDoc;
-    const fitBounds = getBestFitBounds(data);
+      if (!res.ok) {
+        let detail = "DXF parse failed.";
+        try {
+          const err = (await res.json()) as { detail?: string };
+          if (typeof err.detail === "string" && err.detail.trim()) {
+            detail = err.detail;
+          }
+        } catch {
+          // keep default detail
+        }
+        throw new Error(detail);
+      }
 
-    setDoc(data);
-    setCadIr(
-      buildCadIrFromRenderDoc({
-        doc: data,
-        sourceFileName: file.name,
-      })
-    );
+      const data = (await res.json()) as RenderDoc;
+      if (!Array.isArray(data.layers) || !Array.isArray(data.entities)) {
+        throw new Error("Parsed DXF payload is invalid.");
+      }
 
-    if (fitBounds) fitToBounds(fitBounds);
+      const fitBounds = getBestFitBounds(data);
+
+      setDoc(data);
+      setCadIr(
+        buildCadIrFromRenderDoc({
+          doc: data,
+          sourceFileName: file.name,
+        })
+      );
+
+      if (fitBounds) fitToBounds(fitBounds);
+      setCadIrValidationState(null);
+    } catch (error) {
+      setDoc(null);
+      setCadIr(null);
+      setCadIrValidationState({
+        level: "error",
+        title: "DXF Parse Failed",
+        messages: [error instanceof Error ? error.message : "Could not parse DXF file."],
+      });
+    }
   }
 
   return {
