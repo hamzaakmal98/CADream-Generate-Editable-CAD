@@ -179,10 +179,47 @@ async def export_planset_vertical_slice_pages_24_25(payload: dict):
 async def export_planset_auto_pages_dxf(payload: dict):
     def _operation() -> Response:
         normalized_payload = enrich_payload_with_normalized_inputs(payload)
-        zip_bytes = export_auto_pages_dxf_zip(normalized_payload)
+
+        export_payload = dict(normalized_payload)
+        source_token = export_payload.get("source_token")
+        if not isinstance(source_token, str) or source_token not in SOURCE_DXF_CACHE:
+            raise HTTPException(
+                status_code=400,
+                detail="Source DXF is not available in backend cache for preserve-mode auto page export. Please re-upload the DXF in this session, then export again.",
+            )
+        export_payload["__source_dxf_bytes"] = SOURCE_DXF_CACHE[source_token]
+
+        zip_bytes = export_auto_pages_dxf_zip(export_payload)
         return _download_response(zip_bytes, media_type="application/zip", filename="planset-auto-pages.zip")
 
     return _run_with_bad_request("Plan-set auto pages DXF export failed", _operation)
+
+
+@app.post("/planset/preserved-dxf/export")
+async def export_planset_preserved_dxf(payload: dict):
+    def _operation() -> Response:
+        normalized_payload = enrich_payload_with_normalized_inputs(payload)
+
+        source_token = normalized_payload.get("source_token")
+        if not isinstance(source_token, str) or source_token not in SOURCE_DXF_CACHE:
+            raise HTTPException(
+                status_code=400,
+                detail="Source DXF is not available in backend cache. Please re-upload the DXF in this session, then export again.",
+            )
+
+        site_placements = normalized_payload.get("site_placements")
+        if not isinstance(site_placements, dict):
+            raise HTTPException(status_code=400, detail="Missing site_placements in request body")
+
+        source_name = normalized_payload.get("source_file_name")
+        if not isinstance(source_name, str) or not source_name.strip():
+            source_name = "planset-preserved"
+
+        dxf_bytes = export_dxf_from_source_bytes(SOURCE_DXF_CACHE[source_token], site_placements)
+        filename = f"{source_name.rsplit('.', 1)[0]}-preserved.dxf"
+        return _download_response(dxf_bytes, media_type="application/dxf", filename=filename)
+
+    return _run_with_bad_request("Plan-set preserved DXF export failed", _operation)
 
 
 @app.post("/planset/export")
@@ -190,7 +227,13 @@ async def export_planset_package(payload: dict):
     def _operation() -> Response:
         normalized_payload = enrich_payload_with_normalized_inputs(payload)
         _validate_right_panel_metadata_or_raise(normalized_payload)
-        zip_bytes = export_planset_package_zip(normalized_payload)
+
+        package_payload = dict(normalized_payload)
+        source_token = package_payload.get("source_token")
+        if isinstance(source_token, str) and source_token in SOURCE_DXF_CACHE:
+            package_payload["__source_dxf_bytes"] = SOURCE_DXF_CACHE[source_token]
+
+        zip_bytes = export_planset_package_zip(package_payload)
         return _download_response(zip_bytes, media_type="application/zip", filename="planset-export.zip")
 
     return _run_with_bad_request("Plan-set full export failed", _operation)

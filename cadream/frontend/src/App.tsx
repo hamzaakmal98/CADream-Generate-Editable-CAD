@@ -412,6 +412,8 @@ export default function App() {
       cad_ir: cadIr,
       site_placements: sitePlacementPayload,
       sld_session: sldEditor.session,
+      source_token: doc?.source_token,
+      source_file_name: sourceDxfName ?? undefined,
     });
     triggerFileDownload(blob, "planset-auto-pages.zip");
   }
