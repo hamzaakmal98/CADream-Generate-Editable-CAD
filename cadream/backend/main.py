@@ -5,7 +5,7 @@ from cad_parser import dxf_to_render_json, extract_blocks, load_dxf_from_bytes
 from cad_export import export_dxf_from_cad_ir, export_dxf_from_source_bytes
 from cad_ir_validation import validate_cad_ir_payload
 from planset_manifest import build_plan_set_manifest
-from planset_pdf_export import generate_planset_pages_pdf
+from planset_pdf_export import generate_planset_fixed_pages_pdf, generate_planset_pages_pdf
 from planset_payload_stubs import build_plan_set_payload_stubs
 from planset_right_panel_validation import validate_right_panel_payload
 from planset_site_page_profiles import get_site_page_profile, get_site_page_profiles
@@ -192,3 +192,27 @@ async def export_planset_pages_pdf(payload: dict):
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Plan-set pages PDF export failed: {repr(e)}")
+
+
+@app.post("/planset/pages/fixed/pdf-export")
+async def export_planset_fixed_pages_pdf(payload: dict):
+    try:
+        metadata_payload = payload.get("right_panel_metadata")
+        if metadata_payload is None:
+            metadata_payload = payload
+        if not isinstance(metadata_payload, dict):
+            raise HTTPException(status_code=400, detail="right_panel_metadata must be an object")
+        validation_errors = validate_right_panel_payload(metadata_payload)
+        if validation_errors:
+            raise HTTPException(
+                status_code=400,
+                detail="Right panel metadata validation failed: " + "; ".join(validation_errors),
+            )
+        pdf_bytes = generate_planset_fixed_pages_pdf(payload)
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=planset-fixed-pages.pdf"},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Plan-set fixed pages PDF export failed: {repr(e)}")

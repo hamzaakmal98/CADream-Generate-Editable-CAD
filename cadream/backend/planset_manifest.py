@@ -67,7 +67,7 @@ def _has_sld_inputs(sld_session: Any) -> tuple[bool, list[str]]:
 
 def build_plan_set_manifest(payload: dict[str, Any]) -> dict[str, Any]:
     total_pages_raw = payload.get("total_pages")
-    total_pages = int(total_pages_raw) if isinstance(total_pages_raw, int) and total_pages_raw > 0 else 43
+    total_pages = int(total_pages_raw) if isinstance(total_pages_raw, int) and total_pages_raw > 0 else 49
 
     cad_ir_ready, cad_ir_reasons = _has_cad_ir_input(payload.get("cad_ir"))
     site_ready, site_reasons = _has_site_inputs(payload.get("site_placements"))
