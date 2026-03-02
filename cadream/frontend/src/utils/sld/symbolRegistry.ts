@@ -192,11 +192,6 @@ export const SLD_PALETTE_ITEMS: SldPaletteItem[] = [
     label: symbol.label,
     kind: "node" as const,
   })),
-  {
-    type: "wire",
-    label: "Wire",
-    kind: "wire",
-  },
 ];
 
 export function getSldSymbolDefinition(type: string): SldSymbolDefinition | null {

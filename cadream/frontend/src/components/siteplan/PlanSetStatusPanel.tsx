@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SitePlacementExport, SldSessionState } from "../../types/cad";
 import type { CadIrDrawing } from "../../types/cadIr";
 import type { PlanSetManifest, PlanSetPayloadStubsResponse } from "../../types/planset";
@@ -18,7 +18,7 @@ export default function PlanSetStatusPanel({ cadIr, sitePlacementPayload, sldSes
 
   const previewPayload = useMemo(
     () => ({
-      total_pages: 43,
+      total_pages: 49,
       cad_ir: cadIr,
       site_placements: sitePlacementPayload,
       sld_session: sldSession,
@@ -26,7 +26,7 @@ export default function PlanSetStatusPanel({ cadIr, sitePlacementPayload, sldSes
     [cadIr, sitePlacementPayload, sldSession]
   );
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -62,11 +62,11 @@ export default function PlanSetStatusPanel({ cadIr, sitePlacementPayload, sldSes
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [previewPayload]);
 
   useEffect(() => {
     void refresh();
-  }, [previewPayload]);
+  }, [refresh]);
 
   const stubSummary = useMemo(() => {
     if (!payloadStubs) {
