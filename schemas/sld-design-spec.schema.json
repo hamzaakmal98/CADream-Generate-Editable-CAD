@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cadream.local/schemas/sld-design-spec.schema.json",
+  "title": "SLDDesignSpec",
+  "description": "Single-line diagram graph payload with symbol nodes and connections.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "symbols", "connections"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "sld-design-spec-v1"
+    },
+    "symbols": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "symbol_type", "x", "y"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "symbol_type": { "type": "string", "minLength": 1 },
+          "x": { "type": "number" },
+          "y": { "type": "number" },
+          "rotation": { "type": "number" },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      }
+    },
+    "connections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "from_symbol_id", "to_symbol_id", "vertices"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "from_symbol_id": { "type": "string", "minLength": 1 },
+          "to_symbol_id": { "type": "string", "minLength": 1 },
+          "wire_type": { "type": "string" },
+          "label": { "type": "string" },
+          "vertices": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["x", "y"],
+              "properties": {
+                "x": { "type": "number" },
+                "y": { "type": "number" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
