@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from typing import Any, Awaitable, Callable
 from cad_parser import dxf_to_render_json, extract_blocks, load_dxf_from_bytes
 from cad_export import export_dxf_from_cad_ir, export_dxf_from_source_bytes
 from cad_ir_validation import validate_cad_ir_payload
@@ -14,6 +15,54 @@ from planset_template_sample import generate_common_template_sample_dxf
 import hashlib
 
 SOURCE_DXF_CACHE: dict[str, bytes] = {}
+
+
+def _download_response(content: bytes, *, media_type: str, filename: str) -> Response:
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+def _resolve_metadata_payload(payload: dict) -> dict:
+    metadata_payload = payload.get("right_panel_metadata")
+    if metadata_payload is None:
+        metadata_payload = payload
+    if not isinstance(metadata_payload, dict):
+        raise HTTPException(status_code=400, detail="right_panel_metadata must be an object")
+    return metadata_payload
+
+
+def _validate_right_panel_metadata_or_raise(payload: dict) -> None:
+    validation_errors = validate_right_panel_payload(_resolve_metadata_payload(payload))
+    if validation_errors:
+        raise HTTPException(
+            status_code=400,
+            detail="Right panel metadata validation failed: " + "; ".join(validation_errors),
+        )
+
+
+def _raise_bad_request(error_prefix: str, error: Exception) -> HTTPException:
+    return HTTPException(status_code=400, detail=f"{error_prefix}: {repr(error)}")
+
+
+def _run_with_bad_request(error_prefix: str, operation: Callable[[], Any]) -> Any:
+    try:
+        return operation()
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise _raise_bad_request(error_prefix, error)
+
+
+async def _run_async_with_bad_request(error_prefix: str, operation: Callable[[], Awaitable[Any]]) -> Any:
+    try:
+        return await operation()
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise _raise_bad_request(error_prefix, error)
 
 app = FastAPI(title="CADream Backend")
 
@@ -34,7 +83,7 @@ app.add_middleware(
 
 @app.post("/dxf/parse")
 async def parse_dxf(file: UploadFile = File(...)):
-    try:
+    async def _operation() -> dict:
         data = await file.read()
         source_token = hashlib.sha256(data).hexdigest()
         SOURCE_DXF_CACHE[source_token] = data
@@ -48,13 +97,13 @@ async def parse_dxf(file: UploadFile = File(...)):
             "blocks": len(payload["blocks"]),
         }
         return payload
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"DXF parse failed: {repr(e)}")
+
+    return await _run_async_with_bad_request("DXF parse failed", _operation)
 
 
 @app.post("/dxf/export")
 async def export_dxf(payload: dict):
-    try:
+    def _operation() -> Response:
         source_name = payload.get("source_file_name")
         if not isinstance(source_name, str) or not source_name.strip():
             source_name = "cadream-export"
@@ -78,56 +127,46 @@ async def export_dxf(payload: dict):
 
         filename = f"{source_name.rsplit('.', 1)[0]}.dxf"
 
-        return Response(
-            content=dxf_bytes,
-            media_type="application/dxf",
-            headers={"Content-Disposition": f"attachment; filename={filename}"},
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"DXF export failed: {repr(e)}")
+        return _download_response(dxf_bytes, media_type="application/dxf", filename=filename)
+
+    return _run_with_bad_request("DXF export failed", _operation)
 
 
 @app.post("/cad-ir/validate")
 async def validate_cad_ir(payload: dict):
-    try:
+    def _operation() -> dict:
         cad_ir = payload.get("cad_ir")
         result = validate_cad_ir_payload(cad_ir)
         return result
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"CAD IR validation failed: {repr(e)}")
+
+    return _run_with_bad_request("CAD IR validation failed", _operation)
 
 
 @app.post("/planset/preview")
 async def preview_plan_set(payload: dict):
-    try:
+    def _operation() -> dict:
         manifest = build_plan_set_manifest(payload)
         return manifest
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Plan-set preview failed: {repr(e)}")
+
+    return _run_with_bad_request("Plan-set preview failed", _operation)
 
 
 @app.post("/planset/payload-stubs")
 async def preview_plan_set_payload_stubs(payload: dict):
-    try:
+    def _operation() -> dict:
         result = build_plan_set_payload_stubs(payload)
         return result
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Plan-set payload stub preview failed: {repr(e)}")
+
+    return _run_with_bad_request("Plan-set payload stub preview failed", _operation)
 
 
 @app.post("/planset/pages-24-25/export")
 async def export_planset_vertical_slice_pages_24_25(payload: dict):
-    try:
+    def _operation() -> Response:
         zip_bytes = export_sld_vertical_slice_zip(payload)
-        return Response(
-            content=zip_bytes,
-            media_type="application/zip",
-            headers={"Content-Disposition": "attachment; filename=planset-pages-24-25.zip"},
-        )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Plan-set pages 24/25 export failed: {repr(e)}")
+        return _download_response(zip_bytes, media_type="application/zip", filename="planset-pages-24-25.zip")
+
+    return _run_with_bad_request("Plan-set pages 24/25 export failed", _operation)
 
 
 @app.get("/planset/site-page-profiles")
@@ -148,71 +187,29 @@ async def get_planset_site_page_profile(page_number: int):
 
 @app.post("/planset/template-sample/export")
 async def export_planset_template_sample(payload: dict):
-    try:
-        metadata_payload = payload.get("right_panel_metadata")
-        if metadata_payload is None:
-            metadata_payload = payload
-        if not isinstance(metadata_payload, dict):
-            raise HTTPException(status_code=400, detail="right_panel_metadata must be an object")
-        validation_errors = validate_right_panel_payload(metadata_payload)
-        if validation_errors:
-            raise HTTPException(
-                status_code=400,
-                detail="Right panel metadata validation failed: " + "; ".join(validation_errors),
-            )
+    def _operation() -> Response:
+        _validate_right_panel_metadata_or_raise(payload)
         dxf_bytes = generate_common_template_sample_dxf(payload)
-        return Response(
-            content=dxf_bytes,
-            media_type="application/dxf",
-            headers={"Content-Disposition": "attachment; filename=planset-template-sample.dxf"},
-        )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Template sample export failed: {repr(e)}")
+        return _download_response(dxf_bytes, media_type="application/dxf", filename="planset-template-sample.dxf")
+
+    return _run_with_bad_request("Template sample export failed", _operation)
 
 
 @app.post("/planset/pages/pdf-export")
 async def export_planset_pages_pdf(payload: dict):
-    try:
-        metadata_payload = payload.get("right_panel_metadata")
-        if metadata_payload is None:
-            metadata_payload = payload
-        if not isinstance(metadata_payload, dict):
-            raise HTTPException(status_code=400, detail="right_panel_metadata must be an object")
-        validation_errors = validate_right_panel_payload(metadata_payload)
-        if validation_errors:
-            raise HTTPException(
-                status_code=400,
-                detail="Right panel metadata validation failed: " + "; ".join(validation_errors),
-            )
+    def _operation() -> Response:
+        _validate_right_panel_metadata_or_raise(payload)
         pdf_bytes = generate_planset_pages_pdf(payload)
-        return Response(
-            content=pdf_bytes,
-            media_type="application/pdf",
-            headers={"Content-Disposition": "attachment; filename=planset-pages.pdf"},
-        )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Plan-set pages PDF export failed: {repr(e)}")
+        return _download_response(pdf_bytes, media_type="application/pdf", filename="planset-pages.pdf")
+
+    return _run_with_bad_request("Plan-set pages PDF export failed", _operation)
 
 
 @app.post("/planset/pages/fixed/pdf-export")
 async def export_planset_fixed_pages_pdf(payload: dict):
-    try:
-        metadata_payload = payload.get("right_panel_metadata")
-        if metadata_payload is None:
-            metadata_payload = payload
-        if not isinstance(metadata_payload, dict):
-            raise HTTPException(status_code=400, detail="right_panel_metadata must be an object")
-        validation_errors = validate_right_panel_payload(metadata_payload)
-        if validation_errors:
-            raise HTTPException(
-                status_code=400,
-                detail="Right panel metadata validation failed: " + "; ".join(validation_errors),
-            )
+    def _operation() -> Response:
+        _validate_right_panel_metadata_or_raise(payload)
         pdf_bytes = generate_planset_fixed_pages_pdf(payload)
-        return Response(
-            content=pdf_bytes,
-            media_type="application/pdf",
-            headers={"Content-Disposition": "attachment; filename=planset-fixed-pages.pdf"},
-        )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Plan-set fixed pages PDF export failed: {repr(e)}")
+        return _download_response(pdf_bytes, media_type="application/pdf", filename="planset-fixed-pages.pdf")
+
+    return _run_with_bad_request("Plan-set fixed pages PDF export failed", _operation)
