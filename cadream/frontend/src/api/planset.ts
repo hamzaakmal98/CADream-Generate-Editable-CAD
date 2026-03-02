@@ -40,9 +40,9 @@ async function postBinary(
 
 export async function exportPages2425Zip(payload: ExportRequestPayload): Promise<Blob> {
   const response = await postBinary(
-    "/api/planset/pages-24-25/export",
+    "/api/planset/auto-pages/export",
     payload,
-    "Failed to export pages 24/25 DXF zip.",
+    "Failed to export auto pages DXF zip.",
   );
   return response.blob();
 }

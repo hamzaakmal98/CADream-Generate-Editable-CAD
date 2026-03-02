@@ -10,6 +10,7 @@ from reportlab.pdfgen import canvas
 from pypdf import PdfReader, PdfWriter
 
 from planset_manifest import build_plan_set_manifest
+from planset_auto_page_emitters import emit_auto_page_entities
 from planset_pdf_compositor import (
     compose_fixed_left_panels,
     fixed_page_numbers_from_manifest,
@@ -287,8 +288,90 @@ def _draw_content_preview(
     page_w: float,
     page_h: float,
     page_info: dict[str, Any],
+    payload: dict[str, Any],
 ) -> None:
-    return
+    generation_mode = page_info.get("generation_mode")
+    if generation_mode != "auto":
+        return
+
+    page_number = int(page_info.get("page_number", 0) or 0)
+    if page_number <= 0:
+        return
+
+    entities = emit_auto_page_entities(payload, page_number)
+    if not entities:
+        return
+
+    pdf.saveState()
+    pdf.setLineWidth(0.8)
+
+    def _mm_to_x(mm_x: float) -> float:
+        return mm_to_points(mm_x)
+
+    def _mm_to_y(mm_y: float) -> float:
+        return mm_to_points(mm_y)
+
+    for entity in entities:
+        if not isinstance(entity, dict):
+            continue
+        kind = entity.get("kind")
+        data = entity.get("data") if isinstance(entity.get("data"), dict) else {}
+
+        if kind == "polyline":
+            raw_points = data.get("points") if isinstance(data.get("points"), list) else []
+            points: list[tuple[float, float]] = []
+            for point in raw_points:
+                if not isinstance(point, (list, tuple)) or len(point) < 2:
+                    continue
+                x_raw, y_raw = point[0], point[1]
+                if isinstance(x_raw, (int, float)) and isinstance(y_raw, (int, float)):
+                    points.append((_mm_to_x(float(x_raw)), _mm_to_y(float(y_raw))))
+
+            if len(points) >= 2:
+                path = pdf.beginPath()
+                path.moveTo(points[0][0], points[0][1])
+                for x, y in points[1:]:
+                    path.lineTo(x, y)
+                pdf.drawPath(path, stroke=1, fill=0)
+            continue
+
+        if kind == "circle":
+            center = data.get("center") if isinstance(data.get("center"), (list, tuple)) else None
+            radius = data.get("r")
+            if (
+                isinstance(center, (list, tuple))
+                and len(center) >= 2
+                and isinstance(center[0], (int, float))
+                and isinstance(center[1], (int, float))
+                and isinstance(radius, (int, float))
+            ):
+                pdf.circle(_mm_to_x(float(center[0])), _mm_to_y(float(center[1])), mm_to_points(float(radius)), stroke=1, fill=0)
+            continue
+
+        if kind == "text":
+            text_value = data.get("text")
+            x_value = data.get("x")
+            y_value = data.get("y")
+            text_h_mm = data.get("height")
+            if isinstance(text_value, str) and isinstance(x_value, (int, float)) and isinstance(y_value, (int, float)):
+                font_size = mm_to_points(float(text_h_mm)) if isinstance(text_h_mm, (int, float)) else 6.5
+                pdf.setFont("Helvetica", max(5.5, min(12.0, font_size)))
+                pdf.drawString(_mm_to_x(float(x_value)), _mm_to_y(float(y_value)), text_value[:72])
+            continue
+
+        if kind == "block_insert":
+            x_value = data.get("x")
+            y_value = data.get("y")
+            block_name = data.get("block_name") if isinstance(data.get("block_name"), str) else "BLOCK"
+            if isinstance(x_value, (int, float)) and isinstance(y_value, (int, float)):
+                px = _mm_to_x(float(x_value))
+                py = _mm_to_y(float(y_value))
+                marker = mm_to_points(1.6)
+                pdf.rect(px - marker, py - marker, marker * 2.0, marker * 2.0, stroke=1, fill=0)
+                pdf.setFont("Helvetica", 5.6)
+                pdf.drawString(px + mm_to_points(1.8), py + mm_to_points(1.2), block_name[:30])
+
+    pdf.restoreState()
 
 
 def generate_planset_fixed_pages_pdf(payload: dict[str, Any]) -> bytes:
@@ -349,7 +432,7 @@ def generate_planset_pages_pdf(payload: dict[str, Any]) -> bytes:
             metadata=metadata,
             signature_image_bytes=signature_image_bytes,
         )
-        _draw_content_preview(pdf, page_w=page_w, page_h=page_h, page_info=page)
+        _draw_content_preview(pdf, page_w=page_w, page_h=page_h, page_info=page, payload=payload)
         pdf.showPage()
 
     pdf.save()

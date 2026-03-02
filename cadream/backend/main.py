@@ -8,9 +8,11 @@ from cad_ir_validation import validate_cad_ir_payload
 from planset_manifest import build_plan_set_manifest
 from planset_pdf_export import generate_planset_fixed_pages_pdf, generate_planset_pages_pdf
 from planset_payload_stubs import build_plan_set_payload_stubs
+from planset_request_envelope import enrich_payload_with_normalized_inputs
 from planset_right_panel_validation import validate_right_panel_payload
 from planset_site_page_profiles import get_site_page_profile, get_site_page_profiles
 from planset_sld_pages import export_sld_vertical_slice_zip
+from planset_auto_pages_dxf import export_auto_pages_dxf_zip
 from planset_template_sample import generate_common_template_sample_dxf
 import hashlib
 
@@ -145,7 +147,8 @@ async def validate_cad_ir(payload: dict):
 @app.post("/planset/preview")
 async def preview_plan_set(payload: dict):
     def _operation() -> dict:
-        manifest = build_plan_set_manifest(payload)
+        normalized_payload = enrich_payload_with_normalized_inputs(payload)
+        manifest = build_plan_set_manifest(normalized_payload)
         return manifest
 
     return _run_with_bad_request("Plan-set preview failed", _operation)
@@ -154,7 +157,8 @@ async def preview_plan_set(payload: dict):
 @app.post("/planset/payload-stubs")
 async def preview_plan_set_payload_stubs(payload: dict):
     def _operation() -> dict:
-        result = build_plan_set_payload_stubs(payload)
+        normalized_payload = enrich_payload_with_normalized_inputs(payload)
+        result = build_plan_set_payload_stubs(normalized_payload)
         return result
 
     return _run_with_bad_request("Plan-set payload stub preview failed", _operation)
@@ -163,10 +167,21 @@ async def preview_plan_set_payload_stubs(payload: dict):
 @app.post("/planset/pages-24-25/export")
 async def export_planset_vertical_slice_pages_24_25(payload: dict):
     def _operation() -> Response:
-        zip_bytes = export_sld_vertical_slice_zip(payload)
+        normalized_payload = enrich_payload_with_normalized_inputs(payload)
+        zip_bytes = export_sld_vertical_slice_zip(normalized_payload)
         return _download_response(zip_bytes, media_type="application/zip", filename="planset-pages-24-25.zip")
 
     return _run_with_bad_request("Plan-set pages 24/25 export failed", _operation)
+
+
+@app.post("/planset/auto-pages/export")
+async def export_planset_auto_pages_dxf(payload: dict):
+    def _operation() -> Response:
+        normalized_payload = enrich_payload_with_normalized_inputs(payload)
+        zip_bytes = export_auto_pages_dxf_zip(normalized_payload)
+        return _download_response(zip_bytes, media_type="application/zip", filename="planset-auto-pages.zip")
+
+    return _run_with_bad_request("Plan-set auto pages DXF export failed", _operation)
 
 
 @app.get("/planset/site-page-profiles")
@@ -188,8 +203,9 @@ async def get_planset_site_page_profile(page_number: int):
 @app.post("/planset/template-sample/export")
 async def export_planset_template_sample(payload: dict):
     def _operation() -> Response:
-        _validate_right_panel_metadata_or_raise(payload)
-        dxf_bytes = generate_common_template_sample_dxf(payload)
+        normalized_payload = enrich_payload_with_normalized_inputs(payload)
+        _validate_right_panel_metadata_or_raise(normalized_payload)
+        dxf_bytes = generate_common_template_sample_dxf(normalized_payload)
         return _download_response(dxf_bytes, media_type="application/dxf", filename="planset-template-sample.dxf")
 
     return _run_with_bad_request("Template sample export failed", _operation)
@@ -198,8 +214,9 @@ async def export_planset_template_sample(payload: dict):
 @app.post("/planset/pages/pdf-export")
 async def export_planset_pages_pdf(payload: dict):
     def _operation() -> Response:
-        _validate_right_panel_metadata_or_raise(payload)
-        pdf_bytes = generate_planset_pages_pdf(payload)
+        normalized_payload = enrich_payload_with_normalized_inputs(payload)
+        _validate_right_panel_metadata_or_raise(normalized_payload)
+        pdf_bytes = generate_planset_pages_pdf(normalized_payload)
         return _download_response(pdf_bytes, media_type="application/pdf", filename="planset-pages.pdf")
 
     return _run_with_bad_request("Plan-set pages PDF export failed", _operation)
@@ -208,8 +225,9 @@ async def export_planset_pages_pdf(payload: dict):
 @app.post("/planset/pages/fixed/pdf-export")
 async def export_planset_fixed_pages_pdf(payload: dict):
     def _operation() -> Response:
-        _validate_right_panel_metadata_or_raise(payload)
-        pdf_bytes = generate_planset_fixed_pages_pdf(payload)
+        normalized_payload = enrich_payload_with_normalized_inputs(payload)
+        _validate_right_panel_metadata_or_raise(normalized_payload)
+        pdf_bytes = generate_planset_fixed_pages_pdf(normalized_payload)
         return _download_response(pdf_bytes, media_type="application/pdf", filename="planset-fixed-pages.pdf")
 
     return _run_with_bad_request("Plan-set fixed pages PDF export failed", _operation)
