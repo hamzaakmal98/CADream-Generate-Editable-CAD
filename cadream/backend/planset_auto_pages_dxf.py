@@ -14,13 +14,10 @@ from planset_auto_page_emitters import emit_auto_page_entities
 from planset_generation_geometry import build_projector, compute_bounds, expand_bounds, project_point
 from planset_manifest import build_plan_set_manifest
 from planset_pdf_titles import build_right_panel_metadata, resolve_generated_page_title
+from planset_site_page_profiles import get_site_page_profile
 
 
 _CONTENT_RECT = (24.0, 86.0, 312.0, 266.0)
-_SITE_PAGE_ALL_VIEW = {1, 7, 12, 42, 43}
-_SITE_PAGE_BESS_VIEW = {2, 13}
-_SITE_PAGE_CABLE_VIEW = {4, 5, 16, 17}
-_SITE_PAGE_POI_VIEW = {6}
 
 
 def _ensure_layer(doc: ezdxf.document.Drawing, name: str, color: int) -> None:
@@ -384,30 +381,336 @@ def _collect_site_points_from_placements(payload: dict[str, Any]) -> tuple[list[
     return bess_points, cable_points, poi_point
 
 
+def _nearest_point(reference: tuple[float, float], points: list[tuple[float, float]]) -> tuple[float, float] | None:
+    if not points:
+        return None
+    rx, ry = reference
+    return min(points, key=lambda point: (point[0] - rx) ** 2 + (point[1] - ry) ** 2)
+
+
+def _points_for_strategy(
+    strategy: str,
+    bess_points: list[tuple[float, float]],
+    cable_points: list[tuple[float, float]],
+    poi: tuple[float, float] | None,
+) -> tuple[list[tuple[float, float]], float, float]:
+    lower = strategy.lower()
+    all_points = list(bess_points) + list(cable_points)
+    if poi is not None:
+        all_points.append(poi)
+
+    if lower == "fit-all-site-geometry":
+        return all_points, 0.16, 10.0
+
+    if lower in {"fit-bess-cluster-with-padding", "fit-bess-cluster-with-label-priority"}:
+        focus = list(bess_points)
+        if focus and cable_points:
+            cx = sum(point[0] for point in focus) / len(focus)
+            cy = sum(point[1] for point in focus) / len(focus)
+            nearest_cable = _nearest_point((cx, cy), cable_points)
+            if nearest_cable is not None:
+                focus.append(nearest_cable)
+        return focus, 0.1, 8.0
+
+    if lower == "fit-cable-network":
+        focus = list(cable_points)
+        if poi is not None:
+            focus.append(poi)
+        if bess_points and poi is not None:
+            nearest_bess = _nearest_point(poi, bess_points)
+            if nearest_bess is not None:
+                focus.append(nearest_bess)
+        return focus, 0.09, 8.0
+
+    if lower == "fit-cable-network-focused":
+        if not cable_points:
+            focus = []
+        else:
+            cx = sum(point[0] for point in cable_points) / len(cable_points)
+            cy = sum(point[1] for point in cable_points) / len(cable_points)
+            ranked = sorted(cable_points, key=lambda point: (point[0] - cx) ** 2 + (point[1] - cy) ** 2)
+            focus = ranked[: max(6, len(ranked) // 2)]
+        if poi is not None:
+            focus.append(poi)
+        return focus, 0.06, 7.0
+
+    if lower in {"fit-poi-zone-with-buffer", "fit-poi-context-emphasis"}:
+        focus: list[tuple[float, float]] = []
+        if poi is not None:
+            focus.append(poi)
+            nearest_bess = _nearest_point(poi, bess_points)
+            if nearest_bess is not None:
+                focus.append(nearest_bess)
+            sorted_cable = sorted(cable_points, key=lambda point: (point[0] - poi[0]) ** 2 + (point[1] - poi[1]) ** 2)
+            focus.extend(sorted_cable[: max(4, len(sorted_cable) // 3)])
+        return focus, 0.12, 9.0
+
+    if lower == "fit-bess-and-access-corridor":
+        focus = list(bess_points)
+        if focus and cable_points:
+            cx = sum(point[0] for point in focus) / len(focus)
+            cy = sum(point[1] for point in focus) / len(focus)
+            ranked = sorted(cable_points, key=lambda point: (point[0] - cx) ** 2 + (point[1] - cy) ** 2)
+            focus.extend(ranked[: max(6, len(ranked) // 3)])
+        if poi is not None:
+            focus.append(poi)
+        return focus, 0.14, 10.0
+
+    if lower in {"fit-site-with-note-zones", "fit-route-plus-utility-context"}:
+        return all_points, 0.18, 12.0
+
+    if lower == "fit-densest-route-region":
+        if not cable_points:
+            return all_points, 0.1, 8.0
+        cx = sum(point[0] for point in cable_points) / len(cable_points)
+        cy = sum(point[1] for point in cable_points) / len(cable_points)
+        ranked = sorted(cable_points, key=lambda point: (point[0] - cx) ** 2 + (point[1] - cy) ** 2)
+        focus = ranked[: max(6, len(ranked) // 2)]
+        if poi is not None:
+            focus.append(poi)
+        return focus, 0.07, 7.0
+
+    if lower == "fit-second-densest-route-region":
+        if not cable_points:
+            return all_points, 0.1, 8.0
+        cx = sum(point[0] for point in cable_points) / len(cable_points)
+        cy = sum(point[1] for point in cable_points) / len(cable_points)
+        ranked = sorted(cable_points, key=lambda point: (point[0] - cx) ** 2 + (point[1] - cy) ** 2, reverse=True)
+        focus = ranked[: max(6, len(ranked) // 2)]
+        if poi is not None:
+            focus.append(poi)
+        return focus, 0.07, 7.0
+
+    return all_points, 0.1, 8.0
+
+
+def _layer_lookup_from_cad_ir(payload: dict[str, Any]) -> dict[str, str]:
+    cad_ir = payload.get("cad_ir") if isinstance(payload.get("cad_ir"), dict) else {}
+    layers = cad_ir.get("layers") if isinstance(cad_ir.get("layers"), list) else []
+
+    lookup: dict[str, str] = {}
+    for layer in layers:
+        if not isinstance(layer, dict):
+            continue
+        layer_id = layer.get("id")
+        name = layer.get("name")
+        if isinstance(layer_id, str) and isinstance(name, str):
+            lookup[layer_id] = name
+    return lookup
+
+
+def _context_entries_from_cad_ir(payload: dict[str, Any], *, max_entities: int = 12000) -> list[tuple[tuple[float, float], str]]:
+    cad_ir = payload.get("cad_ir") if isinstance(payload.get("cad_ir"), dict) else {}
+    entities_by_id = cad_ir.get("entitiesById") if isinstance(cad_ir.get("entitiesById"), dict) else {}
+    model_ids = cad_ir.get("modelSpaceEntityIds") if isinstance(cad_ir.get("modelSpaceEntityIds"), list) else []
+    layer_lookup = _layer_lookup_from_cad_ir(payload)
+
+    entries: list[tuple[tuple[float, float], str]] = []
+    seen = 0
+    for entity_id in model_ids:
+        if seen >= max_entities:
+            break
+        if not isinstance(entity_id, str):
+            continue
+        entity = entities_by_id.get(entity_id)
+        if not isinstance(entity, dict):
+            continue
+
+        seen += 1
+        entity_type = entity.get("type")
+        layer_id = entity.get("layerId")
+        layer_name = layer_lookup.get(layer_id, layer_id if isinstance(layer_id, str) else str(entity.get("layer") or ""))
+        block_name = str(entity.get("blockName") or entity.get("name") or "")
+        text_value = str(entity.get("text") or "")
+        search_text = f"{str(layer_name).lower()} {block_name.lower()} {text_value.lower()}"
+
+        if entity_type == "LINE":
+            start = entity.get("start") if isinstance(entity.get("start"), list) else []
+            end = entity.get("end") if isinstance(entity.get("end"), list) else []
+            if len(start) >= 2 and isinstance(start[0], (int, float)) and isinstance(start[1], (int, float)):
+                entries.append(((float(start[0]), float(start[1])), search_text))
+            if len(end) >= 2 and isinstance(end[0], (int, float)) and isinstance(end[1], (int, float)):
+                entries.append(((float(end[0]), float(end[1])), search_text))
+            continue
+
+        if entity_type == "LWPOLYLINE":
+            vertices = entity.get("vertices") if isinstance(entity.get("vertices"), list) else []
+            for vertex in vertices:
+                if not isinstance(vertex, dict):
+                    continue
+                x = vertex.get("x")
+                y = vertex.get("y")
+                if isinstance(x, (int, float)) and isinstance(y, (int, float)):
+                    entries.append(((float(x), float(y)), search_text))
+            continue
+
+        if entity_type == "CIRCLE":
+            center = entity.get("center") if isinstance(entity.get("center"), list) else []
+            radius = entity.get("radius")
+            if (
+                len(center) >= 2
+                and isinstance(center[0], (int, float))
+                and isinstance(center[1], (int, float))
+                and isinstance(radius, (int, float))
+            ):
+                cx = float(center[0])
+                cy = float(center[1])
+                r = abs(float(radius))
+                entries.extend([
+                    ((cx, cy), search_text),
+                    ((cx - r, cy), search_text),
+                    ((cx + r, cy), search_text),
+                    ((cx, cy - r), search_text),
+                    ((cx, cy + r), search_text),
+                ])
+            continue
+
+        if entity_type == "ARC":
+            center = entity.get("center") if isinstance(entity.get("center"), list) else []
+            radius = entity.get("radius")
+            if (
+                len(center) >= 2
+                and isinstance(center[0], (int, float))
+                and isinstance(center[1], (int, float))
+                and isinstance(radius, (int, float))
+            ):
+                cx = float(center[0])
+                cy = float(center[1])
+                r = abs(float(radius))
+                entries.extend([
+                    ((cx, cy), search_text),
+                    ((cx - r, cy), search_text),
+                    ((cx + r, cy), search_text),
+                    ((cx, cy - r), search_text),
+                    ((cx, cy + r), search_text),
+                ])
+
+    return entries
+
+
+def _context_points_for_profile(payload: dict[str, Any], profile: dict[str, Any] | None) -> list[tuple[float, float]]:
+    entries = _context_entries_from_cad_ir(payload)
+    if not entries:
+        return []
+
+    raw_keywords = profile.get("lock_keywords") if isinstance(profile, dict) and isinstance(profile.get("lock_keywords"), list) else []
+    keywords = [str(item).strip().lower() for item in raw_keywords if isinstance(item, str) and item.strip()]
+    if not keywords:
+        return [point for point, _ in entries]
+
+    matched = [point for point, search_text in entries if any(keyword in search_text for keyword in keywords)]
+    if matched:
+        return matched
+    return [point for point, _ in entries]
+
+
+def _context_window_params(strategy: str) -> tuple[float, int]:
+    lower = strategy.lower()
+    if lower in {"fit-all-site-geometry", "fit-bess-and-access-corridor", "fit-site-with-note-zones", "fit-route-plus-utility-context"}:
+        return 0.35, 2600
+    if lower in {"fit-cable-network", "fit-cable-network-focused"}:
+        return 0.26, 2000
+    if lower in {"fit-poi-zone-with-buffer", "fit-poi-context-emphasis"}:
+        return 0.24, 1600
+    if lower in {"fit-densest-route-region", "fit-second-densest-route-region"}:
+        return 0.2, 1400
+    return 0.2, 1200
+
+
+def _max_bounds_expansion_ratio(strategy: str) -> float:
+    lower = strategy.lower()
+    if lower in {"fit-bess-cluster-with-padding", "fit-bess-cluster-with-label-priority"}:
+        return 1.7
+    if lower in {"fit-cable-network-focused", "fit-densest-route-region", "fit-second-densest-route-region"}:
+        return 1.9
+    if lower in {"fit-poi-zone-with-buffer", "fit-poi-context-emphasis"}:
+        return 2.0
+    if lower in {"fit-cable-network", "fit-bess-and-access-corridor"}:
+        return 2.2
+    return 2.6
+
+
+def _augment_focus_with_context(
+    focus_points: list[tuple[float, float]],
+    context_points: list[tuple[float, float]],
+    strategy: str,
+) -> list[tuple[float, float]]:
+    if not focus_points or not context_points:
+        return focus_points
+
+    base_bounds = compute_bounds(focus_points)
+    if base_bounds is None:
+        return focus_points
+
+    window_ratio, cap = _context_window_params(strategy)
+    min_x, min_y, max_x, max_y = expand_bounds(base_bounds, pad_ratio=window_ratio, min_pad=12.0)
+
+    nearby = [point for point in context_points if min_x <= point[0] <= max_x and min_y <= point[1] <= max_y]
+    if not nearby:
+        return focus_points
+
+    if len(nearby) > cap:
+        step = max(1, len(nearby) // cap)
+        nearby = nearby[::step]
+
+    combined = focus_points + nearby
+    combined_bounds = compute_bounds(combined)
+    if combined_bounds is None:
+        return combined
+
+    base_min_x, base_min_y, base_max_x, base_max_y = base_bounds
+    base_w = max(1.0, base_max_x - base_min_x)
+    base_h = max(1.0, base_max_y - base_min_y)
+    expansion = _max_bounds_expansion_ratio(strategy)
+
+    max_w = base_w * expansion
+    max_h = base_h * expansion
+    cx = (base_min_x + base_max_x) * 0.5
+    cy = (base_min_y + base_max_y) * 0.5
+    half_w = max_w * 0.5
+    half_h = max_h * 0.5
+
+    clipped = [
+        point
+        for point in combined
+        if (cx - half_w) <= point[0] <= (cx + half_w) and (cy - half_h) <= point[1] <= (cy + half_h)
+    ]
+    return clipped if clipped else focus_points
+
+
 def _focus_bounds_for_page(payload: dict[str, Any], page_number: int) -> tuple[float, float, float, float] | None:
     bess_points, cable_points, poi = _collect_site_points_from_placements(payload)
 
-    if page_number in _SITE_PAGE_BESS_VIEW:
-        focus_points = list(bess_points)
-        if poi is not None:
-            focus_points.append(poi)
-    elif page_number in _SITE_PAGE_POI_VIEW:
-        focus_points = list(cable_points)
-        if poi is not None:
-            focus_points.append(poi)
-    elif page_number in _SITE_PAGE_CABLE_VIEW:
-        focus_points = list(cable_points)
-        if poi is not None:
-            focus_points.append(poi)
-    else:
-        focus_points = list(bess_points) + list(cable_points)
-        if poi is not None:
-            focus_points.append(poi)
+    profile = get_site_page_profile(page_number)
+    context_points = _context_points_for_profile(payload, profile)
+    strategy = str(profile.get("view_strategy")) if isinstance(profile, dict) and isinstance(profile.get("view_strategy"), str) else "fit-all-site-geometry"
+    focus_points, pad_ratio, min_pad = _points_for_strategy(strategy, bess_points, cable_points, poi)
+    focus_points = _augment_focus_with_context(focus_points, context_points, strategy)
 
     bounds = compute_bounds(focus_points)
     if bounds is None:
         return None
-    return expand_bounds(bounds, pad_ratio=0.14 if page_number in _SITE_PAGE_ALL_VIEW else 0.08, min_pad=8.0)
+    expanded = expand_bounds(bounds, pad_ratio=pad_ratio, min_pad=min_pad)
+    return _apply_page_variant_nudge(expanded, page_number)
+
+
+def _apply_page_variant_nudge(bounds: tuple[float, float, float, float], page_number: int) -> tuple[float, float, float, float]:
+    min_x, min_y, max_x, max_y = bounds
+    width = max(1e-6, max_x - min_x)
+    height = max(1e-6, max_y - min_y)
+
+    shifts: dict[int, tuple[float, float]] = {
+        13: (0.06, 0.03),
+        17: (-0.08, -0.05),
+        43: (0.05, -0.04),
+    }
+    shift = shifts.get(page_number)
+    if shift is None:
+        return bounds
+
+    dx = width * shift[0]
+    dy = height * shift[1]
+    return min_x + dx, min_y + dy, max_x + dx, max_y + dy
 
 
 def _draw_page_focus_window(layout: Any, doc: ezdxf.document.Drawing, bounds: tuple[float, float, float, float], page_number: int) -> None:
