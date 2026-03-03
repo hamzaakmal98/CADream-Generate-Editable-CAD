@@ -511,7 +511,41 @@ def _draw_sld_edges_page_24(
         if len(polyline_points) < 2:
             continue
 
-        layout.add_lwpolyline(polyline_points, dxfattribs={"layer": wire_layer})
+        for seg_i in range(len(polyline_points) - 1):
+            layout.add_line(polyline_points[seg_i], polyline_points[seg_i + 1], dxfattribs={"layer": wire_layer})
+
+
+def _perpendicular_offset_polyline(pts: list[tuple[float, float]], offset: float) -> list[tuple[float, float]]:
+    """Offset an orthogonal polyline perpendicular to each segment.
+    Horizontal segments are offset in Y, vertical segments in X.
+    Corner vertices receive both offsets so the three lines stay parallel through turns.
+    """
+    if len(pts) < 2 or abs(offset) < 1e-9:
+        return pts
+
+    n = len(pts)
+    result: list[tuple[float, float]] = []
+    for i, (x, y) in enumerate(pts):
+        has_h = False
+        has_v = False
+        if i > 0:
+            dx = pts[i][0] - pts[i - 1][0]
+            dy = pts[i][1] - pts[i - 1][1]
+            if abs(dx) >= abs(dy):
+                has_h = True
+            else:
+                has_v = True
+        if i < n - 1:
+            dx = pts[i + 1][0] - pts[i][0]
+            dy = pts[i + 1][1] - pts[i][1]
+            if abs(dx) >= abs(dy):
+                has_h = True
+            else:
+                has_v = True
+        ox = offset if has_v else 0.0
+        oy = offset if has_h else 0.0
+        result.append((x + ox, y + oy))
+    return result
 
 
 def _draw_sld_edges_page_25(
@@ -561,8 +595,9 @@ def _draw_sld_edges_page_25(
             continue
 
         for offset in offsets:
-            shifted = [(x, y + offset) for x, y in polyline_points]
-            layout.add_lwpolyline(shifted, dxfattribs={"layer": wire_layer})
+            shifted = _perpendicular_offset_polyline(polyline_points, offset)
+            for seg_i in range(len(shifted) - 1):
+                layout.add_line(shifted[seg_i], shifted[seg_i + 1], dxfattribs={"layer": wire_layer})
 
 
 def _serialize_doc(doc: ezdxf.document.Drawing) -> bytes:
@@ -798,10 +833,11 @@ def generate_sld_pages_pdf(payload: dict[str, Any]) -> bytes:
 
             offsets = [-1.5, 0.0, 1.5] if three_line else [0.0]
             for offset in offsets:
+                offset_pts = _perpendicular_offset_polyline(polyline_pts, offset)
                 path = pdf.beginPath()
-                path.moveTo(polyline_pts[0][0] * mm, (polyline_pts[0][1] + offset) * mm)
-                for xp, yp in polyline_pts[1:]:
-                    path.lineTo(xp * mm, (yp + offset) * mm)
+                path.moveTo(offset_pts[0][0] * mm, offset_pts[0][1] * mm)
+                for xp, yp in offset_pts[1:]:
+                    path.lineTo(xp * mm, yp * mm)
                 pdf.drawPath(path, stroke=1, fill=0)
 
         pdf.showPage()
