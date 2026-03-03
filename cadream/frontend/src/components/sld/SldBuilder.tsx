@@ -557,6 +557,44 @@ export default function SldBuilder({
           <button style={TOOL_BUTTON_STYLE} onClick={() => importInputRef.current?.click()}>
             Import SLD JSON
           </button>
+
+          {/* --- SLD Export Buttons --- */}
+          <button style={TOOL_BUTTON_STYLE} onClick={async () => {
+            const { exportSingleLineDxf } = await import('../../api/planset');
+            const blob = await exportSingleLineDxf({ sld_session: session });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'single-line-diagram.dxf';
+            a.click();
+            window.URL.revokeObjectURL(url);
+          }}>
+            Export Single Line DXF
+          </button>
+          <button style={TOOL_BUTTON_STYLE} onClick={async () => {
+            const { exportThreeLineDxf } = await import('../../api/planset');
+            const blob = await exportThreeLineDxf({ sld_session: session });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'three-line-diagram.dxf';
+            a.click();
+            window.URL.revokeObjectURL(url);
+          }}>
+            Export Three Line DXF
+          </button>
+          <button style={TOOL_BUTTON_STYLE} onClick={async () => {
+            const { exportSldPagesPdf } = await import('../../api/planset');
+            const blob = await exportSldPagesPdf({ sld_session: session });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'sld-pages-24-25.pdf';
+            a.click();
+            window.URL.revokeObjectURL(url);
+          }}>
+            Export SLD Pages PDF (24, 25)
+          </button>
           <input
             ref={importInputRef}
             type="file"
