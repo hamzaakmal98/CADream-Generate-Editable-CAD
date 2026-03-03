@@ -56,6 +56,8 @@ type InteractiveSitePlanWorkspaceProps = {
   onExportDxf: () => void;
   onExportAutoPages: () => void;
   onExportPagesPdf: () => void;
+  isGeneratingPages: boolean;
+  generatedPageNumbers: number[];
   isExportingPlansetPdf: boolean;
   plansetPdfProgress: number | null;
   rightPanelMetadata: RightPanelMetadata;
@@ -108,6 +110,8 @@ export default function InteractiveSitePlanWorkspace({
   onExportDxf,
   onExportAutoPages,
   onExportPagesPdf,
+  isGeneratingPages,
+  generatedPageNumbers,
   isExportingPlansetPdf,
   plansetPdfProgress,
   rightPanelMetadata,
@@ -151,6 +155,8 @@ export default function InteractiveSitePlanWorkspace({
         onExportDxf={onExportDxf}
         onExportAutoPages={onExportAutoPages}
         onExportPagesPdf={onExportPagesPdf}
+        isGeneratingPages={isGeneratingPages}
+        generatedPageNumbers={generatedPageNumbers}
         isExportingPlansetPdf={isExportingPlansetPdf}
         plansetPdfProgress={plansetPdfProgress}
         rightPanelMetadata={rightPanelMetadata}

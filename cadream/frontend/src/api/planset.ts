@@ -65,3 +65,30 @@ export async function exportPlansetPdfResponse(payload: ExportRequestPayload): P
     "Failed to generate pages PDF.",
   );
 }
+
+export async function generatePagesFromDxfZip(args: {
+  file: File;
+  viewSpecMode?: "manifest14" | "heuristic" | "provided";
+  providedViewSpecs?: unknown;
+  templateId?: string;
+}): Promise<Blob> {
+  const formData = new FormData();
+  formData.append("file", args.file);
+  formData.append("view_spec_mode", args.viewSpecMode ?? "manifest14");
+  formData.append("template_id", args.templateId ?? "template-v1");
+
+  if (typeof args.providedViewSpecs !== "undefined") {
+    formData.append("provided_view_specs", JSON.stringify(args.providedViewSpecs));
+  }
+
+  const response = await fetch("/api/planset/generate-from-dxf", {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(await resolveErrorDetail(response, "Failed to generate pages from DXF."));
+  }
+
+  return response.blob();
+}

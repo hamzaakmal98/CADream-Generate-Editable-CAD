@@ -2,6 +2,17 @@ import { Group, Line, Text } from "react-konva";
 import type { ReactNode } from "react";
 import type { Affine2D, RenderDoc, RenderEntity } from "../../types/cad";
 import {
+  CAD_INSERT_FALLBACK_LABEL_SIZE,
+  CAD_INSERT_FALLBACK_MARKER_SIZE,
+  CAD_INSERT_FALLBACK_STROKE_WIDTH,
+  CAD_INSERT_MIN_VISIBLE_PIXEL_SIZE,
+  CAD_MAX_INSERT_RECURSION_DEPTH,
+  CAD_STATIC_STROKE_WIDTH,
+  CAD_TEXT_MAX_RENDER_HEIGHT,
+  CAD_TEXT_MAX_RENDER_SIZE,
+  CAD_TEXT_MIN_RENDER_SIZE,
+} from "../../constants/cadRender";
+import {
   adaptiveArcSegments,
   adaptiveCircleSegments,
   arcPoints,
@@ -57,7 +68,7 @@ export function createInsertRenderer({
     if (isHeavyScene) {
       const wPx = Math.abs(worldBounds.maxX - worldBounds.minX) * safeScale;
       const hPx = Math.abs(worldBounds.maxY - worldBounds.minY) * safeScale;
-      if (Math.max(wPx, hPx) < 0.7) return false;
+      if (Math.max(wPx, hPx) < CAD_INSERT_MIN_VISIBLE_PIXEL_SIZE) return false;
     }
 
     return true;
@@ -78,7 +89,7 @@ export function createInsertRenderer({
     depth = 0,
     chain: string[] = []
   ) => {
-    if (depth > 10) return null;
+    if (depth > CAD_MAX_INSERT_RECURSION_DEPTH) return null;
     if (chain.includes(ins.name)) return null;
     if (!isInsertVisible(ins, parentXform)) return null;
 
@@ -88,13 +99,21 @@ export function createInsertRenderer({
       const p = transformPoint(0, 0, xform);
       const x = p[0];
       const y = -p[1];
-      const size = 12 / scale;
-      const fontSize = 12 / scale;
+      const size = CAD_INSERT_FALLBACK_MARKER_SIZE / scale;
+      const fontSize = CAD_INSERT_FALLBACK_LABEL_SIZE / scale;
 
       return (
         <Group key={keyPrefix} listening={false}>
-          <Line points={[x - size, y, x + size, y]} stroke="red" strokeWidth={2 / scale} />
-          <Line points={[x, y - size, x, y + size]} stroke="red" strokeWidth={2 / scale} />
+          <Line
+            points={[x - size, y, x + size, y]}
+            stroke="red"
+            strokeWidth={CAD_INSERT_FALLBACK_STROKE_WIDTH / scale}
+          />
+          <Line
+            points={[x, y - size, x, y + size]}
+            stroke="red"
+            strokeWidth={CAD_INSERT_FALLBACK_STROKE_WIDTH / scale}
+          />
           <Text x={x + size + 2} y={y - size - 2} text={ins.name} fontSize={fontSize} />
         </Group>
       );
@@ -116,7 +135,7 @@ export function createInsertRenderer({
                 key={`${keyPrefix}-b-${bIdx}`}
                 points={[p1[0], -p1[1], p2[0], -p2[1]]}
                 stroke="black"
-                strokeWidth={1 / scale}
+                strokeWidth={CAD_STATIC_STROKE_WIDTH / scale}
                 listening={false}
                 perfectDrawEnabled={false}
               />
@@ -134,7 +153,7 @@ export function createInsertRenderer({
                 key={`${keyPrefix}-b-${bIdx}`}
                 points={pts}
                 stroke="black"
-                strokeWidth={1 / scale}
+                strokeWidth={CAD_STATIC_STROKE_WIDTH / scale}
                 closed={bEnt.closed}
                 listening={false}
                 perfectDrawEnabled={false}
@@ -153,7 +172,7 @@ export function createInsertRenderer({
                 key={`${keyPrefix}-b-${bIdx}`}
                 points={circlePts}
                 stroke="black"
-                strokeWidth={1 / scale}
+                strokeWidth={CAD_STATIC_STROKE_WIDTH / scale}
                 closed
                 listening={false}
                 perfectDrawEnabled={false}
@@ -186,7 +205,7 @@ export function createInsertRenderer({
                 key={`${keyPrefix}-b-${bIdx}`}
                 points={arcPts}
                 stroke="black"
-                strokeWidth={1 / scale}
+                strokeWidth={CAD_STATIC_STROKE_WIDTH / scale}
                 listening={false}
                 perfectDrawEnabled={false}
               />
@@ -194,6 +213,11 @@ export function createInsertRenderer({
           }
 
           if (bEnt.type === "TEXT" || bEnt.type === "MTEXT") {
+            const rawHeight = Number.isFinite(bEnt.height) ? Math.abs(bEnt.height) : 10;
+            if (rawHeight > CAD_TEXT_MAX_RENDER_HEIGHT) {
+              return null;
+            }
+
             const p = transformPoint(bEnt.pos[0], bEnt.pos[1], xform);
             return (
               <Text
@@ -201,7 +225,10 @@ export function createInsertRenderer({
                 x={p[0]}
                 y={-p[1]}
                 text={bEnt.text}
-                fontSize={Math.max(8 / scale, bEnt.height * avgScale)}
+                fontSize={Math.max(
+                  CAD_TEXT_MIN_RENDER_SIZE / scale,
+                  Math.min(CAD_TEXT_MAX_RENDER_SIZE / scale, rawHeight * avgScale)
+                )}
                 listening={false}
               />
             );

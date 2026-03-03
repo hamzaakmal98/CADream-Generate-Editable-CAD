@@ -11,12 +11,20 @@ import type {
   ToolMode,
 } from "../types/cad";
 import {
+  CAD_ARC_MAX_SEGMENTS_HEAVY,
+  CAD_ARC_MAX_SEGMENTS_LIGHT,
+  CAD_ARC_PIXELS_PER_SEGMENT_HEAVY,
+  CAD_ARC_PIXELS_PER_SEGMENT_LIGHT,
+  CAD_HEAVY_SCENE_DOC_ENTITY_THRESHOLD,
+  CAD_HEAVY_SCENE_VISIBLE_ENTITY_THRESHOLD,
+} from "../constants/cadRender";
+import {
   type Bounds2D,
   entityBounds,
   getViewportWorldBounds,
 } from "../utils/cadGeometry";
 import { buildCadScene } from "../renderers/cad/sceneMapper";
-import { PIXI_CAD_RENDERER } from "../renderers/cad";
+import { SVG_CAD_RENDERER } from "../renderers/cad";
 import { createInsertRenderer } from "./cad/createInsertRenderer";
 
 type CadCanvasProps = {
@@ -72,7 +80,7 @@ export default function CadCanvas({
   onUpdateSelectedCableStart,
   onSetBessPlacements,
 }: CadCanvasProps) {
-  const StaticRenderer = PIXI_CAD_RENDERER.Component;
+  const StaticRenderer = SVG_CAD_RENDERER.Component;
   const safeScale = Math.max(scale, 0.0001);
 
   function toCanvasPoints(points: number[][]) {
@@ -85,11 +93,15 @@ export default function CadCanvas({
     [stageSize, pos, scale]
   );
   const isHeavyScene = useMemo(
-    () => visibleEntities.length > 15000 || (doc?.entities.length ?? 0) > 20000,
+    () =>
+      visibleEntities.length > CAD_HEAVY_SCENE_VISIBLE_ENTITY_THRESHOLD ||
+      (doc?.entities.length ?? 0) > CAD_HEAVY_SCENE_DOC_ENTITY_THRESHOLD,
     [visibleEntities.length, doc?.entities.length]
   );
-  const arcPixelsPerSegment = isHeavyScene ? 20 : 10;
-  const arcMaxSegments = isHeavyScene ? 128 : 512;
+  const arcPixelsPerSegment = isHeavyScene
+    ? CAD_ARC_PIXELS_PER_SEGMENT_HEAVY
+    : CAD_ARC_PIXELS_PER_SEGMENT_LIGHT;
+  const arcMaxSegments = isHeavyScene ? CAD_ARC_MAX_SEGMENTS_HEAVY : CAD_ARC_MAX_SEGMENTS_LIGHT;
   const staticScene = useMemo(
     () =>
       buildCadScene({

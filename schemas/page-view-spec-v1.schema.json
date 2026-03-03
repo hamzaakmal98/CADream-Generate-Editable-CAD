@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cadream.local/schemas/page-view-spec-v1.schema.json",
+  "title": "PageViewSpec",
+  "description": "Per-page view specification for preserved-source DXF page generation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "page_number",
+    "page_name",
+    "view_bounds",
+    "sheet",
+    "viewport_rect",
+    "template"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "page-view-spec-v1"
+    },
+    "page_number": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "page_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "view_bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": {
+        "min": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "number" }
+        },
+        "max": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "number" }
+        }
+      }
+    },
+    "sheet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height", "units"],
+      "properties": {
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "units": {
+          "type": "string",
+          "enum": ["unitless", "millimeter", "centimeter", "meter", "inch", "foot", "unknown"]
+        }
+      }
+    },
+    "viewport_rect": {
+      "type": "array",
+      "description": "Paper-space rect [x1, y1, x2, y2]",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "type": "number" }
+    },
+    "template": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title_block_block_name"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title_block_block_name": { "type": "string", "minLength": 1 }
+      }
+    },
+    "layers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "freeze": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "include": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "overlays": {
+      "type": ["object", "null"],
+      "description": "Optional page overlay directives (freeform v1)."
+    }
+  }
+}
