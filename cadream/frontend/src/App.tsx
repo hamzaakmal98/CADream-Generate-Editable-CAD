@@ -7,7 +7,7 @@ import { useBessEditing } from "./hooks/useBessEditing";
 import { useCableRouting } from "./hooks/useCableRouting";
 import { useProjectActions } from "./hooks/useProjectActions";
 import { useSldEditor } from "./hooks/useSldEditor";
-import { exportAutoPagesZip, exportPlansetPdfResponse } from "./api/planset";
+import { exportPlansetPdfResponse, generatePagesFromDxfZip } from "./api/planset";
 import type {
   PointOfInterconnection,
   RenderDoc,
@@ -131,6 +131,9 @@ export default function App() {
   const [rightPanelMetadata, setRightPanelMetadata] = useState<RightPanelMetadata>(createDefaultRightPanelMetadata);
   const [isExportingPlansetPdf, setIsExportingPlansetPdf] = useState(false);
   const [plansetPdfProgress, setPlansetPdfProgress] = useState<number | null>(null);
+  const [uploadedSourceFile, setUploadedSourceFile] = useState<File | null>(null);
+  const [isGeneratingPages, setIsGeneratingPages] = useState(false);
+  const [generatedPageNumbers, setGeneratedPageNumbers] = useState<number[]>([]);
 
   const [stageSize, setStageSize] = useState({
     w: window.innerWidth - SIDEBAR_WIDTH,
@@ -274,6 +277,12 @@ export default function App() {
     getBestFitBounds,
     fitToBounds,
   });
+
+  async function onUploadFromInterfaceA(file: File) {
+    setUploadedSourceFile(file);
+    setGeneratedPageNumbers([]);
+    await onUpload(file);
+  }
 
   function toggleLayer(name: string) {
     setHiddenLayers((prev) => ({ ...prev, [name]: !prev[name] }));
@@ -422,15 +431,39 @@ export default function App() {
   }
 
   async function onExportAutoPages() {
-    const blob = await exportAutoPagesZip({
-      total_pages: 49,
-      cad_ir: cadIr,
-      site_placements: sitePlacementPayload,
-      sld_session: sldEditor.session,
-      source_token: doc?.source_token,
-      source_file_name: sourceDxfName ?? undefined,
-    });
-    triggerFileDownload(blob, "planset-auto-pages.zip");
+    if (!uploadedSourceFile) {
+      setCadIrValidationState({
+        level: "error",
+        title: "Source File Required",
+        messages: ["Upload a DXF file in this session before generating auto pages."],
+      });
+      return;
+    }
+
+    setIsGeneratingPages(true);
+    try {
+      const blob = await generatePagesFromDxfZip({
+        file: uploadedSourceFile,
+        viewSpecMode: "manifest14",
+        templateId: "template-v1",
+      });
+
+      triggerFileDownload(blob, "generated-pages.zip");
+      setGeneratedPageNumbers([1, 2, 4, 5, 6, 7, 12, 13, 16, 17, 24, 25, 42, 43]);
+      setCadIrValidationState({
+        level: "success",
+        title: "Page Generation Complete",
+        messages: ["Generated editable DXF pages ZIP using deterministic manifest14 mode."],
+      });
+    } catch (error) {
+      setCadIrValidationState({
+        level: "error",
+        title: "Page Generation Failed",
+        messages: [error instanceof Error ? error.message : "Could not generate pages ZIP."],
+      });
+    } finally {
+      setIsGeneratingPages(false);
+    }
   }
 
   async function onExportPagesPdfFromInterfaceA() {
@@ -575,7 +608,7 @@ export default function App() {
             cadIrValidationState={cadIrValidationState}
             canExportDxf={cadIr !== null}
             onDismissValidation={() => setCadIrValidationState(null)}
-            onUpload={onUpload}
+            onUpload={onUploadFromInterfaceA}
             onFitToDrawing={() => {
               if (!doc) return;
               const fitBounds = getBestFitBounds(doc);
@@ -596,6 +629,8 @@ export default function App() {
             onExportDxf={onExportDxf}
             onExportAutoPages={onExportAutoPages}
             onExportPagesPdf={onExportPagesPdfFromInterfaceA}
+            isGeneratingPages={isGeneratingPages}
+            generatedPageNumbers={generatedPageNumbers}
             isExportingPlansetPdf={isExportingPlansetPdf}
             plansetPdfProgress={plansetPdfProgress}
             rightPanelMetadata={rightPanelMetadata}

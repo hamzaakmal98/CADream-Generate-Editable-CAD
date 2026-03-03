@@ -77,6 +77,8 @@ type ControlPanelProps = {
   onExportDxf: () => void;
   onExportAutoPages: () => void;
   onExportPagesPdf: () => void;
+  isGeneratingPages: boolean;
+  generatedPageNumbers: number[];
   isExportingPlansetPdf: boolean;
   plansetPdfProgress: number | null;
   rightPanelMetadata: RightPanelMetadata;
@@ -112,6 +114,8 @@ export default function ControlPanel({
   onExportDxf,
   onExportAutoPages,
   onExportPagesPdf,
+  isGeneratingPages,
+  generatedPageNumbers,
   isExportingPlansetPdf,
   plansetPdfProgress,
   rightPanelMetadata,
@@ -214,11 +218,16 @@ export default function ControlPanel({
         <div style={{ fontSize: 12, fontWeight: 600 }}>PlanSet Export</div>
         <button
           style={{ ...BUTTON_STYLE, width: "100%" }}
-          disabled={!doc}
+          disabled={!doc || isGeneratingPages}
           onClick={onExportAutoPages}
         >
-          Generate Auto Pages (DXF)
+          {isGeneratingPages ? "Generating Pages ZIP..." : "Generate Auto Pages (DXF)"}
         </button>
+        {generatedPageNumbers.length > 0 && (
+          <div style={{ fontSize: 11, color: "#334155" }}>
+            Generated pages: {generatedPageNumbers.join(", ")}
+          </div>
+        )}
         <button
           style={{ ...BUTTON_STYLE, width: "100%" }}
           disabled={!doc || isExportingPlansetPdf}

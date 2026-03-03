@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from typing import Any, Awaitable, Callable
@@ -15,6 +15,8 @@ from planset_sld_pages import export_sld_vertical_slice_zip
 from planset_auto_pages_dxf import export_auto_pages_dxf_zip
 from planset_package import export_planset_package_zip
 from planset_template_sample import generate_common_template_sample_dxf
+from page_generation_pipeline import generate_page_zip_from_source_bytes
+import json
 import hashlib
 
 SOURCE_DXF_CACHE: dict[str, bytes] = {}
@@ -286,3 +288,33 @@ async def export_planset_fixed_pages_pdf(payload: dict):
         return _download_response(pdf_bytes, media_type="application/pdf", filename="planset-fixed-pages.pdf")
 
     return _run_with_bad_request("Plan-set fixed pages PDF export failed", _operation)
+
+
+@app.post("/planset/generate-from-dxf")
+async def generate_pages_from_dxf(
+    file: UploadFile = File(...),
+    view_spec_mode: str = Form("manifest14"),
+    provided_view_specs: str | None = Form(None),
+    template_id: str | None = Form("template-v1"),
+):
+    async def _operation() -> Response:
+        source_bytes = await file.read()
+
+        provided_specs_payload = None
+        if isinstance(provided_view_specs, str) and provided_view_specs.strip():
+            provided_specs_payload = json.loads(provided_view_specs)
+
+        zip_bytes = generate_page_zip_from_source_bytes(
+            source_bytes,
+            view_spec_mode=view_spec_mode,
+            provided_view_specs=provided_specs_payload,
+            template_id=template_id,
+        )
+
+        return _download_response(
+            zip_bytes,
+            media_type="application/zip",
+            filename="generated-pages.zip",
+        )
+
+    return await _run_async_with_bad_request("Plan-set DXF page generation failed", _operation)

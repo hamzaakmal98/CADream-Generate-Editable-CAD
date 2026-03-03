@@ -80,6 +80,9 @@ export default function PixiCadRenderer({ width, height, pos, scale, scene }: Ca
         graphics.stroke({
           width: primitive.strokeWidth / Math.max(scale, 0.0001),
           color: primitive.stroke,
+          cap: "round",
+          join: "round",
+          miterLimit: 2,
         });
         continue;
       }
@@ -96,6 +99,9 @@ export default function PixiCadRenderer({ width, height, pos, scale, scene }: Ca
           graphics.stroke({
             width: primitive.strokeWidth / Math.max(scale, 0.0001),
             color: primitive.stroke,
+            cap: "round",
+            join: "round",
+            miterLimit: 2,
           });
         }
         continue;

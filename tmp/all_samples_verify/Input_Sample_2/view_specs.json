@@ -1,0 +1,422 @@
+[
+  {
+    "schema_version": "page-view-spec-v1",
+    "page_number": 1,
+    "page_name": "Customer Name - (_kW, _kWh) Energy Storage System.",
+    "view_bounds": {
+      "min": [
+        -5820.840188598179,
+        -78581.34254607541
+      ],
+      "max": [
+        33393.90659484818,
+        5820.840188598179
+      ]
+    },
+    "sheet": {
+      "width": 420.0,
+      "height": 297.0,
+      "units": "millimeter"
+    },
+    "viewport_rect": [
+      24.0,
+      86.0,
+      312.0,
+      266.0
+    ],
+    "template": {
+      "id": "template-v1",
+      "title_block_block_name": "CADREAM_TITLEBLOCK_V1"
+    }
+  },
+  {
+    "schema_version": "page-view-spec-v1",
+    "page_number": 2,
+    "page_name": "Customer Name - Property Details",
+    "view_bounds": {
+      "min": [
+        -6496.057650475568,
+        -11734.813820213925
+      ],
+      "max": [
+        2697.3266299684815,
+        6496.057650475562
+      ]
+    },
+    "sheet": {
+      "width": 420.0,
+      "height": 297.0,
+      "units": "millimeter"
+    },
+    "viewport_rect": [
+      24.0,
+      86.0,
+      312.0,
+      266.0
+    ],
+    "template": {
+      "id": "template-v1",
+      "title_block_block_name": "CADREAM_TITLEBLOCK_V1"
+    }
+  },
+  {
+    "schema_version": "page-view-spec-v1",
+    "page_number": 4,
+    "page_name": "Customer Name - Existing Switchgear",
+    "view_bounds": {
+      "min": [
+        24875.73977628152,
+        -79256.5600079528
+      ],
+      "max": [
+        34069.124056725566,
+        -61025.688537263304
+      ]
+    },
+    "sheet": {
+      "width": 420.0,
+      "height": 297.0,
+      "units": "millimeter"
+    },
+    "viewport_rect": [
+      24.0,
+      86.0,
+      312.0,
+      266.0
+    ],
+    "template": {
+      "id": "template-v1",
+      "title_block_block_name": "CADREAM_TITLEBLOCK_V1"
+    }
+  },
+  {
+    "schema_version": "page-view-spec-v1",
+    "page_number": 5,
+    "page_name": "Customer Name - Main Distribution Panel Detail",
+    "view_bounds": {
+      "min": [
+        17032.79041959225,
+        -79256.5600079528
+      ],
+      "max": [
+        26226.1747000363,
+        -61025.688537263304
+      ]
+    },
+    "sheet": {
+      "width": 420.0,
+      "height": 297.0,
+      "units": "millimeter"
+    },
+    "viewport_rect": [
+      24.0,
+      86.0,
+      312.0,
+      266.0
+    ],
+    "template": {
+      "id": "template-v1",
+      "title_block_block_name": "CADREAM_TITLEBLOCK_V1"
+    }
+  },
+  {
+    "schema_version": "page-view-spec-v1",
+    "page_number": 6,
+    "page_name": "Customer Name - Plan Overview & Total Impact Area",
+    "view_bounds": {
+      "min": [
+        -6496.057650475568,
+        -62376.123461018076
+      ],
+      "max": [
+        2697.326629968482,
+        -44145.25199032859
+      ]
+    },
+    "sheet": {
+      "width": 420.0,
+      "height": 297.0,
+      "units": "millimeter"
+    },
+    "viewport_rect": [
+      24.0,
+      86.0,
+      312.0,
+      266.0
+    ],
+    "template": {
+      "id": "template-v1",
+      "title_block_block_name": "CADREAM_TITLEBLOCK_V1"
+    }
+  },
+  {
+    "schema_version": "page-view-spec-v1",
+    "page_number": 7,
+    "page_name": "Customer Name - Top View: Exterior Complete Expectation",
+    "view_bounds": {
+      "min": [
+        -6496.057650475568,
+        -79256.5600079528
+      ],
+      "max": [
+        2697.326629968482,
+        -61025.688537263304
+      ]
+    },
+    "sheet": {
+      "width": 420.0,
+      "height": 297.0,
+      "units": "millimeter"
+    },
+    "viewport_rect": [
+      24.0,
+      86.0,
+      312.0,
+      266.0
+    ],
+    "template": {
+      "id": "template-v1",
+      "title_block_block_name": "CADREAM_TITLEBLOCK_V1"
+    }
+  },
+  {
+    "schema_version": "page-view-spec-v1",
+    "page_number": 12,
+    "page_name": "Customer Name - West View: Completed Expectation",
+    "view_bounds": {
+      "min": [
+        1346.8917062137043,
+        -79256.5600079528
+      ],
+      "max": [
+        10540.275986657753,
+        -61025.688537263304
+      ]
+    },
+    "sheet": {
+      "width": 420.0,
+      "height": 297.0,
+      "units": "millimeter"
+    },
+    "viewport_rect": [
+      24.0,
+      86.0,
+      312.0,
+      266.0
+    ],
+    "template": {
+      "id": "template-v1",
+      "title_block_block_name": "CADREAM_TITLEBLOCK_V1"
+    }
+  },
+  {
+    "schema_version": "page-view-spec-v1",
+    "page_number": 13,
+    "page_name": "Customer Name - West View: Conduit Run & Interior",
+    "view_bounds": {
+      "min": [
+        9189.841062902977,
+        -79256.5600079528
+      ],
+      "max": [
+        18383.22534334703,
+        -61025.688537263304
+      ]
+    },
+    "sheet": {
+      "width": 420.0,
+      "height": 297.0,
+      "units": "millimeter"
+    },
+    "viewport_rect": [
+      24.0,
+      86.0,
+      312.0,
+      266.0
+    ],
+    "template": {
+      "id": "template-v1",
+      "title_block_block_name": "CADREAM_TITLEBLOCK_V1"
+    }
+  },
+  {
+    "schema_version": "page-view-spec-v1",
+    "page_number": 16,
+    "page_name": "Customer Name - South View: Completed Expectation",
+    "view_bounds": {
+      "min": [
+        1346.8917062137043,
+        -62376.123461018076
+      ],
+      "max": [
+        10540.275986657753,
+        -44145.25199032859
+      ]
+    },
+    "sheet": {
+      "width": 420.0,
+      "height": 297.0,
+      "units": "millimeter"
+    },
+    "viewport_rect": [
+      24.0,
+      86.0,
+      312.0,
+      266.0
+    ],
+    "template": {
+      "id": "template-v1",
+      "title_block_block_name": "CADREAM_TITLEBLOCK_V1"
+    }
+  },
+  {
+    "schema_version": "page-view-spec-v1",
+    "page_number": 17,
+    "page_name": "Customer Name - Conduit Run",
+    "view_bounds": {
+      "min": [
+        9189.841062902977,
+        -62376.123461018076
+      ],
+      "max": [
+        18383.22534334703,
+        -44145.25199032859
+      ]
+    },
+    "sheet": {
+      "width": 420.0,
+      "height": 297.0,
+      "units": "millimeter"
+    },
+    "viewport_rect": [
+      24.0,
+      86.0,
+      312.0,
+      266.0
+    ],
+    "template": {
+      "id": "template-v1",
+      "title_block_block_name": "CADREAM_TITLEBLOCK_V1"
+    }
+  },
+  {
+    "schema_version": "page-view-spec-v1",
+    "page_number": 24,
+    "page_name": "Customer Name - Single Line Diagram",
+    "view_bounds": {
+      "min": [
+        17032.79041959225,
+        -62376.123461018076
+      ],
+      "max": [
+        26226.1747000363,
+        -44145.25199032859
+      ]
+    },
+    "sheet": {
+      "width": 420.0,
+      "height": 297.0,
+      "units": "millimeter"
+    },
+    "viewport_rect": [
+      24.0,
+      86.0,
+      312.0,
+      266.0
+    ],
+    "template": {
+      "id": "template-v1",
+      "title_block_block_name": "CADREAM_TITLEBLOCK_V1"
+    }
+  },
+  {
+    "schema_version": "page-view-spec-v1",
+    "page_number": 25,
+    "page_name": "Customer Name - Line Diagram: Three Line",
+    "view_bounds": {
+      "min": [
+        24875.73977628152,
+        -62376.123461018076
+      ],
+      "max": [
+        34069.124056725566,
+        -44145.25199032859
+      ]
+    },
+    "sheet": {
+      "width": 420.0,
+      "height": 297.0,
+      "units": "millimeter"
+    },
+    "viewport_rect": [
+      24.0,
+      86.0,
+      312.0,
+      266.0
+    ],
+    "template": {
+      "id": "template-v1",
+      "title_block_block_name": "CADREAM_TITLEBLOCK_V1"
+    }
+  },
+  {
+    "schema_version": "page-view-spec-v1",
+    "page_number": 42,
+    "page_name": "Customer Name - Fire Supression System: 3",
+    "view_bounds": {
+      "min": [
+        -6496.057650475568,
+        -45495.68691408336
+      ],
+      "max": [
+        2697.326629968482,
+        -27264.815443393865
+      ]
+    },
+    "sheet": {
+      "width": 420.0,
+      "height": 297.0,
+      "units": "millimeter"
+    },
+    "viewport_rect": [
+      24.0,
+      86.0,
+      312.0,
+      266.0
+    ],
+    "template": {
+      "id": "template-v1",
+      "title_block_block_name": "CADREAM_TITLEBLOCK_V1"
+    }
+  },
+  {
+    "schema_version": "page-view-spec-v1",
+    "page_number": 43,
+    "page_name": "Customer Name - Fire Supression System: 4",
+    "view_bounds": {
+      "min": [
+        1346.8917062137043,
+        -45495.68691408336
+      ],
+      "max": [
+        10540.275986657753,
+        -27264.815443393865
+      ]
+    },
+    "sheet": {
+      "width": 420.0,
+      "height": 297.0,
+      "units": "millimeter"
+    },
+    "viewport_rect": [
+      24.0,
+      86.0,
+      312.0,
+      266.0
+    ],
+    "template": {
+      "id": "template-v1",
+      "title_block_block_name": "CADREAM_TITLEBLOCK_V1"
+    }
+  }
+]
