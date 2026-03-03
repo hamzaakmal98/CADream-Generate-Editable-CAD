@@ -1,0 +1,39 @@
+{
+  "schema_version": "viewport-ml-v1",
+  "target_sheets": {
+    "ESS-1.0": {
+      "strategy": "quantile",
+      "q_low": 0.03,
+      "q_high": 0.97,
+      "pad_ratio": 0.08,
+      "min_pad": 8.0
+    },
+    "ESS-5.0": {
+      "strategy": "densest_cell",
+      "grid_rows": 4,
+      "grid_cols": 4,
+      "pad_ratio": 0.12,
+      "min_pad": 6.0,
+      "layer_include": [
+        "Inverter",
+        "Module",
+        "Cable Path",
+        "Service Panel",
+        "Cable Trench",
+        "PV Modules"
+      ]
+    },
+    "ESS-4.0": {
+      "strategy": "densest_cell",
+      "grid_rows": 4,
+      "grid_cols": 4,
+      "pad_ratio": 0.1,
+      "min_pad": 4.0,
+      "layer_include": [
+        "Cable Path",
+        "Service Panel",
+        "Cable Trench"
+      ]
+    }
+  }
+}
