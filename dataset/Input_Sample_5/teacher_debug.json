@@ -1,0 +1,56 @@
+{
+  "schema_version": "ml-teacher-debug-v1",
+  "case_id": "Input_Sample_5",
+  "global_bbox": [
+    -380307.906361,
+    -548327.972012,
+    221936.184061,
+    436515.546365
+  ],
+  "site_plan": {
+    "strategy": "global-fallback",
+    "used_layers": [],
+    "layer_counts": {}
+  },
+  "equipment_layout": {
+    "strategy": "density-window",
+    "used_layers": [],
+    "layer_counts": {},
+    "density_score": 1.0
+  },
+  "layer_counts": {
+    "pub dim": 929,
+    "zt \u9053\u8def": 323,
+    "solid hatch": 203,
+    "tk": 82,
+    "wall": 67,
+    "0": 58,
+    "\u5730\u5f62\u56fe": 40,
+    "\u9006\u53d8\u5668": 28,
+    "0 \u9053\u8def": 24,
+    "b \u6587\u5b57": 22,
+    "jz \u697c\u68af": 20,
+    "\u9634\u5f71": 20,
+    "\u7535\u7f06\u901a\u9053": 18,
+    "\u67f1": 14,
+    "\u5c4b\u810a\u7ebf": 12,
+    "\u5355\u5143\u533a\u57df\u5916\u8f6e\u5ed3": 10,
+    "\u7ec4\u4ef6": 10,
+    "\u969c\u788d\u7269": 10,
+    "window": 8,
+    "\u6d88\u9632\u8f66\u9053": 6,
+    "column": 5,
+    "sgt \u5ba4\u5916": 4,
+    "biao1": 3,
+    "text": 2,
+    "\u7bb1\u53d8": 2,
+    "dim text": 1,
+    "dlss": 1,
+    "dx": 1,
+    "noth": 1,
+    "\u5305\u8fb9\u677f": 1,
+    "\u5e76\u7f51\u67dc": 1,
+    "\u5f00\u5173\u7ad9": 1,
+    "\u7eff\u5316": 1
+  }
+}

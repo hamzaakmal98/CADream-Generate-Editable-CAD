@@ -1,0 +1,67 @@
+{
+  "schema_version": "ml-dataset-v2",
+  "input_dir": "C:\\Users\\hamza\\CADream-Generate-Editable-CAD\\sample-files",
+  "out_dir": "C:\\Users\\hamza\\CADream-Generate-Editable-CAD\\tmp\\dataset_multicrop_smoke",
+  "cases": [
+    {
+      "case_id": "Input_Sample_0",
+      "file": "Input_Sample_0.dxf",
+      "entity_count": 52503,
+      "teacher_confidence": {
+        "SITE_PLAN": 0.75,
+        "EQUIPMENT_LAYOUT": 0.7
+      },
+      "crop_count": 64
+    },
+    {
+      "case_id": "Input_Sample_1",
+      "file": "Input_Sample_1.dxf",
+      "entity_count": 1044,
+      "teacher_confidence": {
+        "SITE_PLAN": 0.9,
+        "EQUIPMENT_LAYOUT": 0.9
+      },
+      "crop_count": 64
+    },
+    {
+      "case_id": "Input_Sample_2",
+      "file": "Input_Sample_2.dxf",
+      "entity_count": 215,
+      "teacher_confidence": {
+        "SITE_PLAN": 0.6,
+        "EQUIPMENT_LAYOUT": 0.5
+      },
+      "crop_count": 64
+    },
+    {
+      "case_id": "Input_Sample_3",
+      "file": "Input_Sample_3.dxf",
+      "entity_count": 471,
+      "teacher_confidence": {
+        "SITE_PLAN": 0.6,
+        "EQUIPMENT_LAYOUT": 0.5
+      },
+      "crop_count": 64
+    },
+    {
+      "case_id": "Input_Sample_4",
+      "file": "Input_Sample_4.dxf",
+      "entity_count": 16892,
+      "teacher_confidence": {
+        "SITE_PLAN": 0.6,
+        "EQUIPMENT_LAYOUT": 0.5
+      },
+      "crop_count": 64
+    },
+    {
+      "case_id": "Input_Sample_5",
+      "file": "Input_Sample_5.dxf",
+      "entity_count": 2064,
+      "teacher_confidence": {
+        "SITE_PLAN": 0.6,
+        "EQUIPMENT_LAYOUT": 0.5
+      },
+      "crop_count": 64
+    }
+  ]
+}

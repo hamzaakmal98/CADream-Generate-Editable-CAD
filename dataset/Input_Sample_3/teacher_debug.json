@@ -1,0 +1,48 @@
+{
+  "schema_version": "ml-teacher-debug-v1",
+  "case_id": "Input_Sample_3",
+  "global_bbox": [
+    -3324.54963,
+    -528.953771,
+    2682.415859,
+    1750.381136
+  ],
+  "site_plan": {
+    "strategy": "global-fallback",
+    "used_layers": [],
+    "layer_counts": {}
+  },
+  "equipment_layout": {
+    "strategy": "density-window",
+    "used_layers": [],
+    "layer_counts": {},
+    "density_score": 2213.0
+  },
+  "layer_counts": {
+    "0": 151,
+    "\u969c\u788d\u7269": 119,
+    "\u9006\u53d8\u5668": 66,
+    "\u7535\u7f06\u901a\u9053": 38,
+    "\u7bb1\u9006": 32,
+    "\u6587\u5b57": 11,
+    "\u7bb1\u53d8": 11,
+    "\u8fd0\u7ef4\u8d70\u9053\u677f": 6,
+    "\u5355\u5143\u533a\u57df\u5916\u8f6e\u5ed3": 3,
+    "\u5c4b\u810a\u7ebf": 3,
+    "\u63a5\u7ebf\u56fe\u6587\u5b57": 3,
+    "\u7ec4\u4ef6": 3,
+    "\u4ea4\u6d41\u7535\u7f06": 1,
+    "\u56fe\u6846": 1,
+    "\u5e76\u7f51\u67dc": 1,
+    "\u5f00\u5173\u7ad9": 1,
+    "\u652f\u67b6": 1,
+    "\u6536\u8d44\u5e95\u56fe": 1,
+    "\u6587\u5b57\u8bf4\u660e": 1,
+    "\u6c47\u6d41\u7bb1": 1,
+    "\u76f4\u6d41\u7535\u7f06": 1,
+    "\u7bb1\u9006\u4e00\u4f53\u673a": 1,
+    "\u7ec4\u4e32\u5f0f\u9006\u53d8\u5668225": 1,
+    "\u9053\u8def": 1,
+    "\u9634\u5f71": 1
+  }
+}

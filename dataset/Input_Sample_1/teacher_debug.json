@@ -1,0 +1,46 @@
+{
+  "schema_version": "ml-teacher-debug-v1",
+  "case_id": "Input_Sample_1",
+  "global_bbox": [
+    -245576.237877,
+    -159954.603964,
+    345809.12622,
+    256848.568353
+  ],
+  "site_plan": {
+    "strategy": "unit-area-boundary-with-context",
+    "used_layers": [
+      "unit area boundary",
+      "shading",
+      "obstruction"
+    ],
+    "layer_counts": {
+      "unit area boundary": 1,
+      "shading": 286,
+      "obstruction": 282
+    }
+  },
+  "equipment_layout": {
+    "strategy": "equipment-layers",
+    "used_layers": [
+      "inverter",
+      "module"
+    ],
+    "layer_counts": {
+      "inverter": 20,
+      "module": 9
+    },
+    "density_score": null
+  },
+  "layer_counts": {
+    "shading": 286,
+    "obstruction": 282,
+    "0": 170,
+    "inverter": 20,
+    "module": 9,
+    "cable path": 6,
+    "service panel": 3,
+    "ridge line": 1,
+    "unit area boundary": 1
+  }
+}

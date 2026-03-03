@@ -1,0 +1,608 @@
+{
+  "count": 64,
+  "items": [
+    {
+      "crop_index": 0,
+      "path": "crops/0/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 1,
+      "path": "crops/1/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 2,
+      "path": "crops/2/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 3,
+      "path": "crops/3/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 4,
+      "path": "crops/4/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 5,
+      "path": "crops/5/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 6,
+      "path": "crops/6/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 7,
+      "path": "crops/7/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 8,
+      "path": "crops/8/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 9,
+      "path": "crops/9/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 10,
+      "path": "crops/10/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 11,
+      "path": "crops/11/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 12,
+      "path": "crops/12/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 13,
+      "path": "crops/13/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 14,
+      "path": "crops/14/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 15,
+      "path": "crops/15/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 16,
+      "path": "crops/16/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 17,
+      "path": "crops/17/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 18,
+      "path": "crops/18/input.npy",
+      "labels": [
+        "SITE_PLAN"
+      ],
+      "weights": {
+        "SITE_PLAN": 0.7000647342855638,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 19,
+      "path": "crops/19/input.npy",
+      "labels": [
+        "SITE_PLAN"
+      ],
+      "weights": {
+        "SITE_PLAN": 0.878222933661984,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 20,
+      "path": "crops/20/input.npy",
+      "labels": [
+        "SITE_PLAN"
+      ],
+      "weights": {
+        "SITE_PLAN": 0.4798206376556137,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 21,
+      "path": "crops/21/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 22,
+      "path": "crops/22/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 23,
+      "path": "crops/23/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 24,
+      "path": "crops/24/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 25,
+      "path": "crops/25/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 26,
+      "path": "crops/26/input.npy",
+      "labels": [
+        "EQUIPMENT_LAYOUT",
+        "SITE_PLAN"
+      ],
+      "weights": {
+        "SITE_PLAN": 0.7174240579550935,
+        "EQUIPMENT_LAYOUT": 0.19571724320603853
+      }
+    },
+    {
+      "crop_index": 27,
+      "path": "crops/27/input.npy",
+      "labels": [
+        "EQUIPMENT_LAYOUT",
+        "SITE_PLAN"
+      ],
+      "weights": {
+        "SITE_PLAN": 0.9,
+        "EQUIPMENT_LAYOUT": 0.19571724320603853
+      }
+    },
+    {
+      "crop_index": 28,
+      "path": "crops/28/input.npy",
+      "labels": [
+        "EQUIPMENT_LAYOUT",
+        "SITE_PLAN"
+      ],
+      "weights": {
+        "SITE_PLAN": 0.4917186255765226,
+        "EQUIPMENT_LAYOUT": 0.19571724320603853
+      }
+    },
+    {
+      "crop_index": 29,
+      "path": "crops/29/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 30,
+      "path": "crops/30/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 31,
+      "path": "crops/31/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 32,
+      "path": "crops/32/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 33,
+      "path": "crops/33/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 34,
+      "path": "crops/34/input.npy",
+      "labels": [
+        "EQUIPMENT_LAYOUT"
+      ],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.19571724320603853
+      }
+    },
+    {
+      "crop_index": 35,
+      "path": "crops/35/input.npy",
+      "labels": [
+        "EQUIPMENT_LAYOUT"
+      ],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.19571724320603853
+      }
+    },
+    {
+      "crop_index": 36,
+      "path": "crops/36/input.npy",
+      "labels": [
+        "EQUIPMENT_LAYOUT"
+      ],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.19571724320603853
+      }
+    },
+    {
+      "crop_index": 37,
+      "path": "crops/37/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 38,
+      "path": "crops/38/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 39,
+      "path": "crops/39/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 40,
+      "path": "crops/40/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 41,
+      "path": "crops/41/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 42,
+      "path": "crops/42/input.npy",
+      "labels": [
+        "EQUIPMENT_LAYOUT"
+      ],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.18177743014687892
+      }
+    },
+    {
+      "crop_index": 43,
+      "path": "crops/43/input.npy",
+      "labels": [
+        "EQUIPMENT_LAYOUT"
+      ],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.18177743014687892
+      }
+    },
+    {
+      "crop_index": 44,
+      "path": "crops/44/input.npy",
+      "labels": [
+        "EQUIPMENT_LAYOUT"
+      ],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.18177743014687892
+      }
+    },
+    {
+      "crop_index": 45,
+      "path": "crops/45/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 46,
+      "path": "crops/46/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 47,
+      "path": "crops/47/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 48,
+      "path": "crops/48/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 49,
+      "path": "crops/49/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 50,
+      "path": "crops/50/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 51,
+      "path": "crops/51/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 52,
+      "path": "crops/52/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 53,
+      "path": "crops/53/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 54,
+      "path": "crops/54/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 55,
+      "path": "crops/55/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 56,
+      "path": "crops/56/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 57,
+      "path": "crops/57/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 58,
+      "path": "crops/58/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 59,
+      "path": "crops/59/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 60,
+      "path": "crops/60/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 61,
+      "path": "crops/61/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 62,
+      "path": "crops/62/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    },
+    {
+      "crop_index": 63,
+      "path": "crops/63/input.npy",
+      "labels": [],
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      }
+    }
+  ]
+}

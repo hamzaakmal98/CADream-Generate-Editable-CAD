@@ -1,0 +1,22 @@
+{
+  "schema_version": "ml-teacher-boxes-v1",
+  "case_id": "Input_Sample_2",
+  "SITE_PLAN": {
+    "bbox": [
+      -79826.933595,
+      -93918.721537,
+      38450.139226,
+      24358.351284
+    ],
+    "confidence": 0.55
+  },
+  "EQUIPMENT_LAYOUT": {
+    "bbox": [
+      -37608.268071,
+      -70935.18646,
+      3869.71911,
+      -29457.199279
+    ],
+    "confidence": 0.66
+  }
+}
