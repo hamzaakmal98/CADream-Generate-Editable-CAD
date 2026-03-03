@@ -825,6 +825,8 @@ def _page_numbers_ready_for_auto(payload: dict[str, Any]) -> list[int]:
             continue
         if page.get("generation_mode") != "auto" or page.get("status") != "auto":
             continue
+        if page.get("sheet_mode") == "parametric_equipment_detail":
+            continue
         page_number = page.get("page_number")
         if isinstance(page_number, int) and page_number > 0:
             page_numbers.append(page_number)

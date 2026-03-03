@@ -1,10 +1,17 @@
 from __future__ import annotations
 
 from typing import Any
+from planset_page_registry import get_mode_page_numbers, get_page_registry_map
 
-AUTO_GENERATED_PAGES = [1, 2, 4, 5, 6, 7, 12, 13, 16, 17, 24, 25, 42, 43]
-SITE_PLAN_AUTO_PAGES = [1, 2, 4, 5, 6, 7, 12, 13, 16, 17, 42, 43]
-SLD_AUTO_PAGES = [24, 25]
+AUTO_GENERATED_PAGES = sorted(
+    get_mode_page_numbers("viewport_from_site_dxf")
+    + get_mode_page_numbers("generate_from_user_inputs")
+)
+AUTO_PARAMETRIC_PAGES = get_mode_page_numbers("parametric_equipment_detail")
+SITE_PLAN_AUTO_PAGES = sorted(
+    get_mode_page_numbers("viewport_from_site_dxf") + AUTO_PARAMETRIC_PAGES
+)
+SLD_AUTO_PAGES = get_mode_page_numbers("generate_from_user_inputs")
 
 
 def _has_cad_ir_input(cad_ir: Any) -> tuple[bool, list[str]]:
@@ -66,8 +73,11 @@ def _has_sld_inputs(sld_session: Any) -> tuple[bool, list[str]]:
 
 
 def build_plan_set_manifest(payload: dict[str, Any]) -> dict[str, Any]:
+    page_registry = get_page_registry_map()
+    max_registry_page = max(page_registry.keys()) if page_registry else 49
+
     total_pages_raw = payload.get("total_pages")
-    total_pages = int(total_pages_raw) if isinstance(total_pages_raw, int) and total_pages_raw > 0 else 49
+    total_pages = int(total_pages_raw) if isinstance(total_pages_raw, int) and total_pages_raw > 0 else max_registry_page
 
     cad_ir_ready, cad_ir_reasons = _has_cad_ir_input(payload.get("cad_ir"))
     site_ready, site_reasons = _has_site_inputs(payload.get("site_placements"))
@@ -75,18 +85,28 @@ def build_plan_set_manifest(payload: dict[str, Any]) -> dict[str, Any]:
 
     pages: list[dict[str, Any]] = []
 
-    auto_page_set = set(AUTO_GENERATED_PAGES)
     site_page_set = set(SITE_PLAN_AUTO_PAGES)
     sld_page_set = set(SLD_AUTO_PAGES)
 
     for page_number in range(1, total_pages + 1):
-        if page_number not in auto_page_set:
+        page_registry_entry = page_registry.get(page_number, {})
+        mode = page_registry_entry.get("mode") if isinstance(page_registry_entry, dict) else None
+        if not isinstance(mode, str) or not mode.strip():
+            mode = "static_template"
+
+        sheet_code = page_registry_entry.get("sheet_code") if isinstance(page_registry_entry, dict) else None
+        source_map = page_registry_entry.get("source_map") if isinstance(page_registry_entry, dict) else None
+
+        if mode == "static_template":
             pages.append(
                 {
                     "page_number": page_number,
                     "generation_mode": "fixed",
                     "status": "fixed",
                     "requirements": [],
+                    "sheet_code": sheet_code,
+                    "sheet_mode": mode,
+                    "source_map": source_map if isinstance(source_map, dict) else {},
                 }
             )
             continue
@@ -116,6 +136,9 @@ def build_plan_set_manifest(payload: dict[str, Any]) -> dict[str, Any]:
                 "status": status,
                 "requirements": requirements,
                 "missing_reasons": reasons,
+                "sheet_code": sheet_code,
+                "sheet_mode": mode,
+                "source_map": source_map if isinstance(source_map, dict) else {},
             }
         )
 

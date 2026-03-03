@@ -13,9 +13,11 @@ from ezdxf.addons import Importer
 
 from cad_parser import load_dxf_from_bytes
 from page_builder_preserve_source import build_page_dxf_from_source_bytes
-from page_view_spec import PageViewSpec, TemplateSpec, parse_page_view_specs
+from page_view_spec import LayerSpec, PageViewSpec, TemplateSpec, parse_page_view_specs
 from view_spec_heuristics import HeuristicViewSpecConfig, make_view_specs_from_source
 from planset_manifest import AUTO_GENERATED_PAGES
+from planset_page_registry import get_page_registry_map
+from planset_viewport_ml import predict_viewport_for_sheet
 from planset_site_page_profiles import PAGE_TITLE_NAMING_SPECS
 
 
@@ -69,6 +71,7 @@ def _normalize_specs(
 
     if mode == "manifest14":
         doc = load_dxf_from_bytes(source_bytes)
+        page_registry = get_page_registry_map()
         baseline_specs = make_view_specs_from_source(
             doc,
             config=HeuristicViewSpecConfig(
@@ -84,16 +87,40 @@ def _normalize_specs(
             raise ValueError("manifest14 mode could not generate enough baseline specs")
 
         specs: list[PageViewSpec] = []
+        render_payload = None
         for index, page_number in enumerate(AUTO_GENERATED_PAGES):
             base = baseline_specs[index]
             page_title = PAGE_TITLE_NAMING_SPECS.get(page_number, f"Auto Page {page_number}")
-            specs.append(
-                replace(
-                    base,
-                    page_number=page_number,
-                    page_name=page_title,
-                )
+            spec = replace(
+                base,
+                page_number=page_number,
+                page_name=page_title,
             )
+
+            entry = page_registry.get(page_number, {}) if isinstance(page_registry, dict) else {}
+            sheet_code = entry.get("sheet_code") if isinstance(entry, dict) else None
+            if isinstance(sheet_code, str) and sheet_code.strip():
+                if render_payload is None:
+                    from cad_parser import dxf_to_render_json
+
+                    render_payload = dxf_to_render_json(doc, max_entities=50000)
+
+                prediction = predict_viewport_for_sheet(render_payload, sheet_code)
+                if prediction is not None:
+                    merged_layers = spec.layers
+                    if prediction.layer_include:
+                        merged_layers = LayerSpec(
+                            freeze=spec.layers.freeze,
+                            include=tuple(sorted(set(spec.layers.include).union(prediction.layer_include))),
+                        )
+
+                    spec = replace(
+                        spec,
+                        view_bounds=prediction.bounds,
+                        layers=merged_layers,
+                    )
+
+            specs.append(spec)
 
     elif mode == "heuristic":
         doc = load_dxf_from_bytes(source_bytes)
