@@ -1,0 +1,25 @@
+{
+  "schema_version": "ml-dataset-labels-v1",
+  "case_id": "Input_Sample_0",
+  "labels": {
+    "SITE_PLAN": [
+      0.997463,
+      0.022174,
+      0.999399,
+      0.024305
+    ],
+    "PANEL_DETAIL": [
+      0.998609,
+      0.023427,
+      0.999027,
+      0.023904
+    ],
+    "WORK_AREA": [
+      0.998609,
+      0.023001,
+      0.999027,
+      0.023478
+    ]
+  },
+  "label_source": "heuristic-bootstrap"
+}

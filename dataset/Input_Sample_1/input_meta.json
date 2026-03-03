@@ -1,0 +1,45 @@
+{
+  "schema_version": "ml-dataset-input-meta-v1",
+  "case_id": "Input_Sample_1",
+  "source_file": "Input_Sample_1.dxf",
+  "image_size": 512,
+  "channels": [
+    "all_geometry",
+    "equipment",
+    "cables",
+    "boundary"
+  ],
+  "bounds": {
+    "min": [
+      -245576.2378757868,
+      -159954.6039628297
+    ],
+    "max": [
+      348923.7621242133,
+      260545.3960371703
+    ]
+  },
+  "entity_count": 778,
+  "layers": [
+    "0",
+    "Defpoints",
+    "AC Cable",
+    "DC Cable",
+    "Cable Path",
+    "Unit Area Boundary",
+    "Drawing Frame",
+    "Switching Station",
+    "Mounting Structure",
+    "Base Map",
+    "Textual Description",
+    "Combiner Box",
+    "Transformer",
+    "Module",
+    "Inverter",
+    "Road",
+    "Obstruction",
+    "Service Panel",
+    "Shading",
+    "Ridge Line"
+  ]
+}
