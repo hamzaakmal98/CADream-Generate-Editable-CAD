@@ -1,0 +1,57 @@
+{
+  "schema_version": "ml-dataset-input-meta-v1",
+  "case_id": "Input_Sample_3",
+  "source_file": "Input_Sample_3.dxf",
+  "image_size": 512,
+  "channels": [
+    "all_geometry",
+    "equipment",
+    "cables",
+    "boundary"
+  ],
+  "bounds": {
+    "min": [
+      -3324.549628916275,
+      -528.9537700928729
+    ],
+    "max": [
+      2689.468850097239,
+      1757.774790627898
+    ]
+  },
+  "entity_count": 459,
+  "layers": [
+    "0",
+    "Defpoints",
+    "\u4ea4\u6d41\u7535\u7f06",
+    "\u76f4\u6d41\u7535\u7f06",
+    "\u7535\u7f06\u901a\u9053",
+    "\u5355\u5143\u533a\u57df\u5916\u8f6e\u5ed3",
+    "\u56fe\u6846",
+    "\u5f00\u5173\u7ad9",
+    "\u652f\u67b6",
+    "\u6536\u8d44\u5e95\u56fe",
+    "\u6587\u5b57\u8bf4\u660e",
+    "\u6c47\u6d41\u7bb1",
+    "\u7bb1\u53d8",
+    "\u7ec4\u4ef6",
+    "\u9006\u53d8\u5668",
+    "\u9053\u8def",
+    "\u969c\u788d\u7269",
+    "\u5e76\u7f51\u67dc",
+    "\u9634\u5f71",
+    "\u5c4b\u810a\u7ebf",
+    "WALL",
+    "\u7bb1\u9006\u4e00\u4f53\u673a",
+    "001\u67dc\u5b50",
+    "\u63a5\u7ebf\u56fe\u6587\u5b57",
+    "AXIS_TEXT",
+    "WINDOW_TEXT",
+    "AXIS",
+    "PUB_DIM",
+    "\u7bb1\u9006",
+    "\u6587\u5b57",
+    "\u8fd0\u7ef4\u8d70\u9053\u677f",
+    "\u7ec4\u4e32\u5f0f\u9006\u53d8\u5668225"
+  ]
+}

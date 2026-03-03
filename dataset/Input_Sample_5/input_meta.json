@@ -1,0 +1,65 @@
+{
+  "schema_version": "ml-dataset-input-meta-v1",
+  "case_id": "Input_Sample_5",
+  "source_file": "Input_Sample_5.dxf",
+  "image_size": 512,
+  "channels": [
+    "all_geometry",
+    "equipment",
+    "cables",
+    "boundary"
+  ],
+  "bounds": {
+    "min": [
+      221399.9730563604,
+      -165745.7140423461
+    ],
+    "max": [
+      221871.8176371918,
+      -165404.6259522954
+    ]
+  },
+  "entity_count": 1928,
+  "layers": [
+    "0",
+    "Defpoints",
+    "\u7535\u7f06\u901a\u9053",
+    "\u5355\u5143\u533a\u57df\u5916\u8f6e\u5ed3",
+    "\u5f00\u5173\u7ad9",
+    "\u7bb1\u53d8",
+    "\u7ec4\u4ef6",
+    "\u9006\u53d8\u5668",
+    "\u969c\u788d\u7269",
+    "\u5e76\u7f51\u67dc",
+    "\u9634\u5f71",
+    "\u5c4b\u810a\u7ebf",
+    "\u7eff\u5316",
+    "\u5730\u5f62\u56fe",
+    "WALL",
+    "PUB_DIM",
+    "\u8f74\u7f51\u6807\u6ce8",
+    "\u6d4b\u91cf\u63a7\u5236\u70b9",
+    "\u7ba1\u7ebf\u53ca\u9644\u5c5e\u8bbe\u65bd",
+    "\u5de5\u77ff\u5efa\u7b51\u7269\u53ca\u5176\u5b83\u8bbe\u65bd",
+    "zt-\u9053\u8def",
+    "DIM_TEXT",
+    "COLUMN",
+    "biao1",
+    "TEXT",
+    "DLSS",
+    "DX",
+    "PUB_TEXT",
+    "0-\u9053\u8def",
+    "sgt-\u5ba4\u5916",
+    "SOLID_HATCH",
+    "NOTH",
+    "\u6d88\u9632\u8f66\u9053",
+    "TK",
+    "WINDOW",
+    "JZ-\u697c\u68af",
+    "\u67f1",
+    "\u5305\u8fb9\u677f",
+    "B-\u6587\u5b57",
+    "\u7535\u5b50\u7ae0"
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "schema_version": "ml-dataset-input-meta-v1",
+  "case_id": "Input_Sample_2",
+  "source_file": "Input_Sample_2.dxf",
+  "image_size": 512,
+  "channels": [
+    "all_geometry",
+    "equipment",
+    "cables",
+    "boundary"
+  ],
+  "bounds": {
+    "min": [
+      -79826.93359375,
+      -76460.50235747723
+    ],
+    "max": [
+      39073.06640625,
+      7639.497642522766
+    ]
+  },
+  "entity_count": 215,
+  "layers": [
+    "0",
+    "Defpoints",
+    "AC Cable",
+    "DC Cable",
+    "Cable Trench",
+    "Unit Area Outer Contour",
+    "Drawing Frame",
+    "Switch Station",
+    "Mounting Bracket",
+    "Base Map",
+    "Text Annotation",
+    "Combiner Box",
+    "Transformer",
+    "PV Modules",
+    "Inverter",
+    "Road",
+    "Obstacle",
+    "Grid Connection Cabinet",
+    "Shadow",
+    "Ridge Line",
+    "Parapet Wall"
+  ]
+}
