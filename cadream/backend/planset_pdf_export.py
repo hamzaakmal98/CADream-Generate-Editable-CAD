@@ -11,6 +11,21 @@ from pypdf import PdfReader, PdfWriter
 
 from planset_manifest import build_plan_set_manifest
 from planset_auto_page_emitters import emit_auto_page_entities
+from planset_sld_pages import (
+    _normalize_sld_nodes,
+    _normalize_sld_edges,
+    _compute_transform_with_edges,
+    _project_point,
+    _anchor_point,
+    _route_with_straight_preference,
+    _orthogonalize_polyline,
+    _perpendicular_offset_polyline,
+    SYMBOL_CANVAS_WIDTH,
+    CANVAS_NODE_HEIGHT,
+    SYMBOL_DISPLAY_LABEL,
+    PAGE_24,
+    PAGE_25,
+)
 from planset_pdf_compositor import (
     compose_fixed_left_panels,
     fixed_page_numbers_from_manifest,
@@ -374,6 +389,93 @@ def _draw_content_preview(
     pdf.restoreState()
 
 
+def _draw_sld_page_content(
+    pdf: canvas.Canvas,
+    *,
+    page_w: float,
+    page_h: float,
+    page_number: int,
+    payload: dict[str, Any],
+) -> None:
+    sld_session = payload.get("sld_session")
+    if not isinstance(sld_session, dict):
+        return
+
+    nodes = _normalize_sld_nodes(sld_session)
+    edges = _normalize_sld_edges(sld_session)
+    if not nodes:
+        return
+
+    transform = _compute_transform_with_edges(nodes, edges)
+
+    node_points: dict[str, tuple[float, float]] = {}
+    node_symbol_types: dict[str, str] = {}
+    for node in nodes:
+        symbol_type = node["symbol_type"]
+        source_width = SYMBOL_CANVAS_WIDTH.get(symbol_type, 120.0)
+        center_x = node["x"] + source_width / 2
+        center_y = node["y"] + CANVAS_NODE_HEIGHT / 2
+        node_points[node["id"]] = _project_point(center_x, center_y, transform)
+        node_symbol_types[node["id"]] = symbol_type
+
+    projected_edges: list[dict[str, Any]] = []
+    for edge in edges:
+        projected_points = [_project_point(x, y, transform) for x, y in edge["points"]] if edge["points"] else []
+        projected_edges.append({**edge, "points": projected_points})
+
+    three_line = page_number == PAGE_25
+
+    pdf.saveState()
+    pdf.setLineWidth(0.7)
+    for node in nodes:
+        symbol_type = node["symbol_type"]
+        display_label = SYMBOL_DISPLAY_LABEL.get(symbol_type, node["label"])
+        x_mm, y_mm = node_points[node["id"]]
+        px = x_mm * mm
+        py = y_mm * mm
+
+        if symbol_type in {"utility-grid", "load"}:
+            pdf.circle(px, py, 8.5 * mm, stroke=1, fill=0)
+        else:
+            pdf.rect(px - 15.0 * mm, py - 9.0 * mm, 30.0 * mm, 18.0 * mm, stroke=1, fill=0)
+
+        pdf.setFont("Helvetica", 5.5)
+        pdf.drawCentredString(px, py - 1.5 * mm, display_label[:22])
+
+    pdf.setLineWidth(0.5)
+    for edge in projected_edges:
+        from_center = node_points.get(edge["from_node_id"])
+        to_center = node_points.get(edge["to_node_id"])
+        if not from_center or not to_center:
+            continue
+
+        points = edge["points"]
+        start_toward_x = to_center[0]
+        end_toward_x = from_center[0]
+        if isinstance(points, list) and len(points) >= 2:
+            start_toward_x = points[1][0]
+            end_toward_x = points[-2][0]
+
+        from_anchor = _anchor_point(from_center, node_symbol_types.get(edge["from_node_id"], ""), start_toward_x)
+        to_anchor = _anchor_point(to_center, node_symbol_types.get(edge["to_node_id"], ""), end_toward_x)
+        polyline_pts = _route_with_straight_preference(from_anchor, to_anchor, points)
+        polyline_pts = _orthogonalize_polyline(polyline_pts)
+
+        if len(polyline_pts) < 2:
+            continue
+
+        offsets = [-1.5, 0.0, 1.5] if three_line else [0.0]
+        for offset in offsets:
+            offset_pts = _perpendicular_offset_polyline(polyline_pts, offset)
+            path = pdf.beginPath()
+            path.moveTo(offset_pts[0][0] * mm, offset_pts[0][1] * mm)
+            for xp, yp in offset_pts[1:]:
+                path.lineTo(xp * mm, yp * mm)
+            pdf.drawPath(path, stroke=1, fill=0)
+
+    pdf.restoreState()
+
+
 def generate_planset_fixed_pages_pdf(payload: dict[str, Any]) -> bytes:
     manifest = build_plan_set_manifest(payload)
     pages = manifest.get("pages") if isinstance(manifest.get("pages"), list) else []
@@ -432,7 +534,10 @@ def generate_planset_pages_pdf(payload: dict[str, Any]) -> bytes:
             metadata=metadata,
             signature_image_bytes=signature_image_bytes,
         )
-        _draw_content_preview(pdf, page_w=page_w, page_h=page_h, page_info=page, payload=payload)
+        if page_number in (PAGE_24, PAGE_25):
+            _draw_sld_page_content(pdf, page_w=page_w, page_h=page_h, page_number=page_number, payload=payload)
+        else:
+            _draw_content_preview(pdf, page_w=page_w, page_h=page_h, page_info=page, payload=payload)
         pdf.showPage()
 
     pdf.save()
