@@ -68,7 +68,7 @@ export async function exportPlansetPdfResponse(payload: ExportRequestPayload): P
 
 export async function generatePagesFromDxfZip(args: {
   file: File;
-  viewSpecMode?: "manifest14" | "heuristic" | "provided";
+  viewSpecMode?: "manifest14" | "heuristic" | "ml" | "provided";
   providedViewSpecs?: unknown;
   templateId?: string;
 }): Promise<Blob> {
