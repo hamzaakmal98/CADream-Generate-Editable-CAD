@@ -66,6 +66,33 @@ export async function exportPlansetPdfResponse(payload: ExportRequestPayload): P
   );
 }
 
+export async function exportSingleLineDxf(payload: { sld_session: unknown }): Promise<Blob> {
+  const response = await postBinary(
+    "/api/planset/pages-24-25/single-line/export",
+    payload as ExportRequestPayload,
+    "Failed to export single line DXF.",
+  );
+  return response.blob();
+}
+
+export async function exportThreeLineDxf(payload: { sld_session: unknown }): Promise<Blob> {
+  const response = await postBinary(
+    "/api/planset/pages-24-25/three-line/export",
+    payload as ExportRequestPayload,
+    "Failed to export three line DXF.",
+  );
+  return response.blob();
+}
+
+export async function exportSldPagesPdf(payload: { sld_session: unknown }): Promise<Blob> {
+  const response = await postBinary(
+    "/api/planset/pages-24-25/pdf-export",
+    payload as ExportRequestPayload,
+    "Failed to export SLD pages PDF.",
+  );
+  return response.blob();
+}
+
 export async function generatePagesFromDxfZip(args: {
   file: File;
   viewSpecMode?: "manifest14" | "heuristic" | "ml" | "provided";

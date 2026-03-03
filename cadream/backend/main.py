@@ -11,7 +11,7 @@ from planset_payload_stubs import build_plan_set_payload_stubs
 from planset_request_envelope import enrich_payload_with_normalized_inputs
 from planset_right_panel_validation import validate_right_panel_payload
 from planset_site_page_profiles import get_site_page_profile, get_site_page_profiles
-from planset_sld_pages import export_sld_vertical_slice_zip
+from planset_sld_pages import export_sld_vertical_slice_zip, generate_sld_vertical_slice_pages_24_25, generate_sld_pages_pdf
 from planset_auto_pages_dxf import export_auto_pages_dxf_zip
 from planset_package import export_planset_package_zip
 from planset_template_sample import generate_common_template_sample_dxf
@@ -175,6 +175,36 @@ async def export_planset_vertical_slice_pages_24_25(payload: dict):
         return _download_response(zip_bytes, media_type="application/zip", filename="planset-pages-24-25.zip")
 
     return _run_with_bad_request("Plan-set pages 24/25 export failed", _operation)
+
+
+@app.post("/planset/pages-24-25/single-line/export")
+async def export_single_line_dxf(payload: dict):
+    def _operation() -> Response:
+        normalized_payload = enrich_payload_with_normalized_inputs(payload)
+        pages = generate_sld_vertical_slice_pages_24_25(normalized_payload)
+        return _download_response(pages["page24.dxf"], media_type="application/dxf", filename="single-line-diagram.dxf")
+
+    return _run_with_bad_request("Single line DXF export failed", _operation)
+
+
+@app.post("/planset/pages-24-25/three-line/export")
+async def export_three_line_dxf(payload: dict):
+    def _operation() -> Response:
+        normalized_payload = enrich_payload_with_normalized_inputs(payload)
+        pages = generate_sld_vertical_slice_pages_24_25(normalized_payload)
+        return _download_response(pages["page25.dxf"], media_type="application/dxf", filename="three-line-diagram.dxf")
+
+    return _run_with_bad_request("Three line DXF export failed", _operation)
+
+
+@app.post("/planset/pages-24-25/pdf-export")
+async def export_sld_pages_pdf(payload: dict):
+    def _operation() -> Response:
+        normalized_payload = enrich_payload_with_normalized_inputs(payload)
+        pdf_bytes = generate_sld_pages_pdf(normalized_payload)
+        return _download_response(pdf_bytes, media_type="application/pdf", filename="sld-pages-24-25.pdf")
+
+    return _run_with_bad_request("SLD pages PDF export failed", _operation)
 
 
 @app.post("/planset/auto-pages/export")
