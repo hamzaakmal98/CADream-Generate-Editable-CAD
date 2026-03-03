@@ -24,7 +24,7 @@ def main() -> int:
     parser.add_argument("--out", required=True, help="Output directory for generated page DXFs")
     parser.add_argument(
         "--mode",
-        choices=["manifest14", "heuristic", "provided"],
+        choices=["manifest14", "heuristic", "ml", "provided"],
         default="manifest14",
         help="View spec mode",
     )
