@@ -185,6 +185,26 @@ def _rank_tiles_by_density(tiles: list[Bounds2D], points: list[tuple[float, floa
     return [index for index, _score in scored_indices]
 
 
+def _rank_tiles_by_density_with_scores(
+    tiles: list[Bounds2D], points: list[tuple[float, float]]
+) -> list[tuple[int, int]]:
+    if not tiles:
+        return []
+    if not points:
+        return [(index, 0) for index in range(len(tiles))]
+
+    scored_indices: list[tuple[int, int]] = []
+    for index, tile in enumerate(tiles):
+        score = 0
+        for x, y in points:
+            if _point_in_bounds(x, y, tile):
+                score += 1
+        scored_indices.append((index, score))
+
+    scored_indices.sort(key=lambda item: (-item[1], item[0]))
+    return scored_indices
+
+
 def _quantile(values: list[float], q: float) -> float:
     if not values:
         return 0.0
@@ -265,10 +285,16 @@ def _robust_bounds_from_density_points(
     if base_width <= 0 or base_height <= 0:
         return None
 
-    if width < base_width * 0.1 and height < base_height * 0.1:
-        return None
-
     return Bounds2D(min_x=min_x, min_y=min_y, max_x=max_x, max_y=max_y)
+
+
+def _shrink_bounds(bounds: Bounds2D, factor: float) -> Bounds2D:
+    clamped = min(1.0, max(0.2, factor))
+    cx = (bounds.min_x + bounds.max_x) * 0.5
+    cy = (bounds.min_y + bounds.max_y) * 0.5
+    half_w = (bounds.max_x - bounds.min_x) * 0.5 * clamped
+    half_h = (bounds.max_y - bounds.min_y) * 0.5 * clamped
+    return Bounds2D(min_x=cx - half_w, min_y=cy - half_h, max_x=cx + half_w, max_y=cy + half_h)
 
 
 def _build_page_spec(
@@ -330,16 +356,31 @@ def make_view_specs_from_render_payload(
 
     if cfg.use_density_ranking:
         density_points = _extract_density_points(render_payload)
-        ranked_tile_indices = _rank_tiles_by_density(tile_candidates, density_points)
-        selected_tile_indices = ranked_tile_indices[:tile_count]
+        ranked_tile_scores = _rank_tiles_by_density_with_scores(tile_candidates, density_points)
+        nonzero = [index for index, score in ranked_tile_scores if score > 0]
+        selected_tile_indices = nonzero[:tile_count]
+
+        if len(selected_tile_indices) < tile_count:
+            fallback_indices = [index for index, _score in ranked_tile_scores] or list(range(len(tile_candidates)))
+            cursor = 0
+            while len(selected_tile_indices) < tile_count and fallback_indices:
+                selected_tile_indices.append(fallback_indices[cursor % len(fallback_indices)])
+                cursor += 1
     else:
         selected_tile_indices = list(range(tile_count))
 
-    for tile_index in selected_tile_indices:
+    for selection_index, tile_index in enumerate(selected_tile_indices):
         row_index = tile_index // cfg.grid_cols
         col_index = tile_index % cfg.grid_cols
+        tile_bounds = tile_candidates[tile_index]
+
+        duplicate_count = selected_tile_indices[:selection_index].count(tile_index)
+        if duplicate_count > 0:
+            shrink_factor = max(0.45, 1.0 - duplicate_count * 0.15)
+            tile_bounds = _shrink_bounds(tile_bounds, shrink_factor)
+
         padded_tile = _expanded(
-            tile_candidates[tile_index],
+            tile_bounds,
             pad_ratio=cfg.tile_pad_ratio,
             min_pad=cfg.tile_min_pad,
         )
