@@ -41,7 +41,7 @@ class BasicBlock(nn.Module):
 
 
 class BoxRegressor(nn.Module):
-    def __init__(self, in_channels: int = 4, hidden_dim: int = 128) -> None:
+    def __init__(self, in_channels: int = 5, hidden_dim: int = 128) -> None:
         super().__init__()
         self.stem = nn.Sequential(
             nn.Conv2d(in_channels, 64, kernel_size=7, stride=2, padding=3, bias=False),

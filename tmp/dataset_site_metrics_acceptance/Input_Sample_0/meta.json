@@ -1,0 +1,55 @@
+{
+  "file": "Input_Sample_0.dxf",
+  "case_id": "Input_Sample_0",
+  "global_bounds": {
+    "min": [
+      -408997.7391445845,
+      -241459.423345288
+    ],
+    "max": [
+      1090.92177009461,
+      5968.540997053035
+    ]
+  },
+  "boundary_bbox_model": null,
+  "viewport_aspect": 1.6,
+  "entity_count": 52503,
+  "channels": [
+    "all_non_noise",
+    "equipment_layers_only",
+    "site_context_layers_only",
+    "noise_layers_only"
+  ],
+  "layer_counts_top": {
+    "01": 8501,
+    "0": 5994,
+    "eb0": 4864,
+    "设备": 4675,
+    "dx": 4336,
+    "02 细灰线": 3770,
+    "05": 3536,
+    "eqpt": 2118,
+    "01 粗实线": 2064,
+    "已建": 1200,
+    "04 虚线": 1082,
+    "05 点画线": 878,
+    "pub text": 870,
+    "road": 790,
+    "管架": 536,
+    "03 细红线": 520,
+    "9双点划线层": 498,
+    "12": 444,
+    "定位中心线": 412,
+    "中心线": 368,
+    "基本标注": 368,
+    "热媒站中心线": 360,
+    "wall": 265,
+    "dim coor": 264,
+    "tkx": 260,
+    "4": 257,
+    "dote": 234,
+    "建筑各种基础线": 214,
+    "02": 183,
+    "dim symb": 167
+  }
+}
