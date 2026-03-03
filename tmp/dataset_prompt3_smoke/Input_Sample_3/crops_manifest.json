@@ -1,0 +1,260 @@
+{
+  "count": 16,
+  "items": [
+    {
+      "crop_index": 0,
+      "path": "crops/0/input.npy",
+      "labels": [],
+      "presence": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      },
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      },
+      "negative_equipment_crop": true
+    },
+    {
+      "crop_index": 1,
+      "path": "crops/1/input.npy",
+      "labels": [
+        "SITE_PLAN"
+      ],
+      "presence": {
+        "SITE_PLAN": 1.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      },
+      "weights": {
+        "SITE_PLAN": 0.21190976735909026,
+        "EQUIPMENT_LAYOUT": 0.0
+      },
+      "negative_equipment_crop": false
+    },
+    {
+      "crop_index": 2,
+      "path": "crops/2/input.npy",
+      "labels": [
+        "SITE_PLAN"
+      ],
+      "presence": {
+        "SITE_PLAN": 1.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      },
+      "weights": {
+        "SITE_PLAN": 0.21190976735909026,
+        "EQUIPMENT_LAYOUT": 0.0
+      },
+      "negative_equipment_crop": false
+    },
+    {
+      "crop_index": 3,
+      "path": "crops/3/input.npy",
+      "labels": [],
+      "presence": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      },
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      },
+      "negative_equipment_crop": false
+    },
+    {
+      "crop_index": 4,
+      "path": "crops/4/input.npy",
+      "labels": [
+        "SITE_PLAN"
+      ],
+      "presence": {
+        "SITE_PLAN": 1.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      },
+      "weights": {
+        "SITE_PLAN": 0.1333333333333333,
+        "EQUIPMENT_LAYOUT": 0.0
+      },
+      "negative_equipment_crop": true
+    },
+    {
+      "crop_index": 5,
+      "path": "crops/5/input.npy",
+      "labels": [
+        "SITE_PLAN"
+      ],
+      "presence": {
+        "SITE_PLAN": 1.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      },
+      "weights": {
+        "SITE_PLAN": 0.2666666666666666,
+        "EQUIPMENT_LAYOUT": 0.0
+      },
+      "negative_equipment_crop": false
+    },
+    {
+      "crop_index": 6,
+      "path": "crops/6/input.npy",
+      "labels": [
+        "EQUIPMENT_LAYOUT",
+        "SITE_PLAN"
+      ],
+      "presence": {
+        "SITE_PLAN": 1.0,
+        "EQUIPMENT_LAYOUT": 1.0
+      },
+      "weights": {
+        "SITE_PLAN": 0.2666666666666666,
+        "EQUIPMENT_LAYOUT": 0.247145640721273
+      },
+      "negative_equipment_crop": false
+    },
+    {
+      "crop_index": 7,
+      "path": "crops/7/input.npy",
+      "labels": [
+        "EQUIPMENT_LAYOUT",
+        "SITE_PLAN"
+      ],
+      "presence": {
+        "SITE_PLAN": 1.0,
+        "EQUIPMENT_LAYOUT": 1.0
+      },
+      "weights": {
+        "SITE_PLAN": 0.1333333333333333,
+        "EQUIPMENT_LAYOUT": 0.25335053320751577
+      },
+      "negative_equipment_crop": false
+    },
+    {
+      "crop_index": 8,
+      "path": "crops/8/input.npy",
+      "labels": [
+        "SITE_PLAN"
+      ],
+      "presence": {
+        "SITE_PLAN": 1.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      },
+      "weights": {
+        "SITE_PLAN": 0.1333333333333333,
+        "EQUIPMENT_LAYOUT": 0.0
+      },
+      "negative_equipment_crop": true
+    },
+    {
+      "crop_index": 9,
+      "path": "crops/9/input.npy",
+      "labels": [
+        "SITE_PLAN"
+      ],
+      "presence": {
+        "SITE_PLAN": 1.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      },
+      "weights": {
+        "SITE_PLAN": 0.2666666666666666,
+        "EQUIPMENT_LAYOUT": 0.0
+      },
+      "negative_equipment_crop": false
+    },
+    {
+      "crop_index": 10,
+      "path": "crops/10/input.npy",
+      "labels": [
+        "EQUIPMENT_LAYOUT",
+        "SITE_PLAN"
+      ],
+      "presence": {
+        "SITE_PLAN": 1.0,
+        "EQUIPMENT_LAYOUT": 1.0
+      },
+      "weights": {
+        "SITE_PLAN": 0.2666666666666666,
+        "EQUIPMENT_LAYOUT": 0.48158482142857156
+      },
+      "negative_equipment_crop": false
+    },
+    {
+      "crop_index": 11,
+      "path": "crops/11/input.npy",
+      "labels": [
+        "EQUIPMENT_LAYOUT",
+        "SITE_PLAN"
+      ],
+      "presence": {
+        "SITE_PLAN": 1.0,
+        "EQUIPMENT_LAYOUT": 1.0
+      },
+      "weights": {
+        "SITE_PLAN": 0.1333333333333333,
+        "EQUIPMENT_LAYOUT": 0.4936755952380951
+      },
+      "negative_equipment_crop": false
+    },
+    {
+      "crop_index": 12,
+      "path": "crops/12/input.npy",
+      "labels": [],
+      "presence": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      },
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      },
+      "negative_equipment_crop": true
+    },
+    {
+      "crop_index": 13,
+      "path": "crops/13/input.npy",
+      "labels": [
+        "SITE_PLAN"
+      ],
+      "presence": {
+        "SITE_PLAN": 1.0,
+        "EQUIPMENT_LAYOUT": 0.0
+      },
+      "weights": {
+        "SITE_PLAN": 0.2119097673590903,
+        "EQUIPMENT_LAYOUT": 0.0
+      },
+      "negative_equipment_crop": false
+    },
+    {
+      "crop_index": 14,
+      "path": "crops/14/input.npy",
+      "labels": [
+        "EQUIPMENT_LAYOUT",
+        "SITE_PLAN"
+      ],
+      "presence": {
+        "SITE_PLAN": 1.0,
+        "EQUIPMENT_LAYOUT": 1.0
+      },
+      "weights": {
+        "SITE_PLAN": 0.2119097673590903,
+        "EQUIPMENT_LAYOUT": 0.48158482142857156
+      },
+      "negative_equipment_crop": false
+    },
+    {
+      "crop_index": 15,
+      "path": "crops/15/input.npy",
+      "labels": [
+        "EQUIPMENT_LAYOUT"
+      ],
+      "presence": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 1.0
+      },
+      "weights": {
+        "SITE_PLAN": 0.0,
+        "EQUIPMENT_LAYOUT": 0.4936755952380951
+      },
+      "negative_equipment_crop": false
+    }
+  ]
+}

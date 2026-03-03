@@ -2,33 +2,41 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from cad_parser import dxf_to_render_json, load_dxf_from_bytes
-from page_view_spec import LayerSpec, PageViewSpec
+from cad_parser import load_dxf_from_bytes
+from ml.infer import DEFAULT_MODEL_PATH, predict_view_boxes_from_dxf
+from page_view_spec import PageViewSpec
 from planset_manifest import AUTO_GENERATED_PAGES
-from planset_page_registry import get_page_registry_map
 from planset_site_page_profiles import PAGE_TITLE_NAMING_SPECS
-from planset_viewport_ml import predict_viewport_for_sheet
 from view_spec_heuristics import HeuristicViewSpecConfig, make_view_specs_from_source
 
 
 def predict_view_specs(normalized_dxf_bytes: bytes, _page_catalog: object = None) -> list[PageViewSpec]:
+    cfg = HeuristicViewSpecConfig(
+        include_overall_page=True,
+        start_page_number=1,
+        grid_rows=5,
+        grid_cols=5,
+        max_grid_pages=13,
+        use_density_ranking=True,
+    )
+
     doc = load_dxf_from_bytes(normalized_dxf_bytes)
     baseline_specs = make_view_specs_from_source(
         doc,
-        config=HeuristicViewSpecConfig(
-            include_overall_page=True,
-            start_page_number=1,
-            grid_rows=5,
-            grid_cols=5,
-            max_grid_pages=13,
-            use_density_ranking=True,
-        ),
+        config=cfg,
     )
     if len(baseline_specs) < len(AUTO_GENERATED_PAGES):
         raise ValueError("ML predictor could not generate enough baseline specs")
 
-    page_registry = get_page_registry_map()
-    render_payload = dxf_to_render_json(doc, max_entities=50000)
+    vx1, vy1, vx2, vy2 = cfg.viewport_rect
+    viewport_aspect = max(0.1, float(vx2 - vx1) / max(1e-9, float(vy2 - vy1)))
+
+    inferred_specs = predict_view_boxes_from_dxf(
+        normalized_dxf_bytes,
+        model_path=str(DEFAULT_MODEL_PATH),
+        viewport_aspect=viewport_aspect,
+    )
+    inferred_by_page: dict[int, PageViewSpec] = {spec.page_number: spec for spec in inferred_specs}
 
     specs: list[PageViewSpec] = []
     for index, page_number in enumerate(AUTO_GENERATED_PAGES):
@@ -36,18 +44,9 @@ def predict_view_specs(normalized_dxf_bytes: bytes, _page_catalog: object = None
         page_title = PAGE_TITLE_NAMING_SPECS.get(page_number, f"Auto Page {page_number}")
         spec = replace(base, page_number=page_number, page_name=page_title)
 
-        entry = page_registry.get(page_number, {}) if isinstance(page_registry, dict) else {}
-        sheet_code = entry.get("sheet_code") if isinstance(entry, dict) else None
-        if isinstance(sheet_code, str) and sheet_code.strip():
-            prediction = predict_viewport_for_sheet(render_payload, sheet_code)
-            if prediction is not None:
-                merged_layers = spec.layers
-                if prediction.layer_include:
-                    merged_layers = LayerSpec(
-                        freeze=spec.layers.freeze,
-                        include=tuple(sorted(set(spec.layers.include).union(prediction.layer_include))),
-                    )
-                spec = replace(spec, view_bounds=prediction.bounds, layers=merged_layers)
+        inferred = inferred_by_page.get(page_number)
+        if inferred is not None:
+            spec = replace(spec, view_bounds=inferred.view_bounds, layers=inferred.layers)
 
         specs.append(spec)
 

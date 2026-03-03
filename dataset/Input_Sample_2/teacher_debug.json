@@ -1,0 +1,31 @@
+{
+  "schema_version": "ml-teacher-debug-v1",
+  "case_id": "Input_Sample_2",
+  "global_bbox": [
+    -79826.933595,
+    -76460.502358,
+    38450.139226,
+    6900.132106
+  ],
+  "site_plan": {
+    "strategy": "global-fallback",
+    "used_layers": [],
+    "layer_counts": {}
+  },
+  "equipment_layout": {
+    "strategy": "density-window",
+    "used_layers": [],
+    "layer_counts": {},
+    "density_score": 47.0
+  },
+  "layer_counts": {
+    "0": 167,
+    "obstacle": 38,
+    "unit area outer contour": 3,
+    "cable trench": 2,
+    "inverter": 2,
+    "grid connection cabinet": 1,
+    "pv modules": 1,
+    "ridge line": 1
+  }
+}

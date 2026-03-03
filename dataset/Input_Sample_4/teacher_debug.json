@@ -1,0 +1,59 @@
+{
+  "schema_version": "ml-teacher-debug-v1",
+  "case_id": "Input_Sample_4",
+  "global_bbox": [
+    -330562.759885,
+    -236951.601624,
+    379099.677031,
+    263212.205155
+  ],
+  "site_plan": {
+    "strategy": "global-fallback",
+    "used_layers": [],
+    "layer_counts": {}
+  },
+  "equipment_layout": {
+    "strategy": "density-window",
+    "used_layers": [],
+    "layer_counts": {},
+    "density_score": 8679.0
+  },
+  "layer_counts": {
+    "\u7ec4\u4ef6": 12158,
+    "map": 1608,
+    "\u969c\u788d\u7269": 630,
+    "\u603b\u56fe\u9053\u8def": 400,
+    "\u9634\u5f71": 321,
+    "\u6587\u5b57": 190,
+    "0": 127,
+    "axis": 80,
+    "x\u6d88\u9632\u8f66\u9053": 68,
+    "a dim elev": 61,
+    "\u5efa\u7b51\u8f6e\u5ed3\u7ebf": 50,
+    "dim coor": 48,
+    "pub text": 48,
+    "s \u5176\u5b83": 45,
+    "axis text": 40,
+    "a landscape": 38,
+    "s\u5e02\u653f\u63a5\u53e3": 32,
+    "dim symb": 31,
+    "a pub text": 25,
+    "a fence": 20,
+    "dote": 20,
+    "\u9006\u53d8\u5668": 20,
+    "\u5176\u4ed6": 19,
+    "\u7535\u7f06\u901a\u9053": 10,
+    "a new building": 9,
+    "\u5c4b\u810a\u7ebf": 8,
+    "\u5355\u5143\u533a\u57df\u5916\u8f6e\u5ed3": 4,
+    "road 202": 3,
+    "\u519c\u8f6c\u75282000\u5750\u6807": 2,
+    "\u5e76\u7f51\u67dc": 2,
+    "\u7bb1\u53d8": 2,
+    "a building name": 1,
+    "grass": 1,
+    "pub dim": 1,
+    "siteline": 1,
+    "\u5f00\u5173\u7ad9": 1
+  }
+}

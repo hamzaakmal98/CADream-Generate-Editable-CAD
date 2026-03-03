@@ -3,6 +3,7 @@
   "case_id": "Input_Sample_4",
   "source_file": "Input_Sample_4.dxf",
   "image_size": 512,
+  "viewport_aspect": 1.0,
   "channels": [
     "all_geometry",
     "equipment",

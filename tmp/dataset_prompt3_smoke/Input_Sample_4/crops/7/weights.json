@@ -1,0 +1,8 @@
+{
+  "schema_version": "ml-crop-weights-v1",
+  "crop_index": 7,
+  "weights": {
+    "SITE_PLAN": 0.15597582882744868,
+    "EQUIPMENT_LAYOUT": 0.0
+  }
+}

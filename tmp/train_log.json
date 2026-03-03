@@ -1,0 +1,47 @@
+{
+  "samples_total": 384,
+  "samples_train": 269,
+  "samples_val": 115,
+  "epochs": 1,
+  "config": {
+    "weight_presence": 0.15,
+    "loss_weight_schedule": {
+      "epochs_1_40": {
+        "coords": 0.5,
+        "equip": 0.1,
+        "noise": 0.05
+      },
+      "epochs_41_120": {
+        "coords": 0.3,
+        "equip": 0.2,
+        "noise": 0.1
+      }
+    },
+    "curriculum_high_q": 0.85,
+    "curriculum_low_q": 0.2
+  },
+  "log": [
+    {
+      "epoch": 1,
+      "loss": 0.08673284454819034,
+      "loss_reg": 0.028042728629182365,
+      "loss_presence": 0.13021666929125786,
+      "loss_equip_coverage": 0.3610721055199118,
+      "loss_noise_suppression": 0.061008062629908384,
+      "mean_w_site": 0.3890123238240033,
+      "mean_w_equip": 0.43171654813351684,
+      "num_samples_seen": 269,
+      "weight_coords": 0.5,
+      "weight_equip_coverage": 0.1,
+      "weight_noise_suppression": 0.05,
+      "train_iou_site": 0.42650723457336426,
+      "train_iou_equip": 0.33416059613227844,
+      "train_mean_box_area": 0.4318660497665405,
+      "train_equipment_coverage": 0.458486312370375,
+      "val_iou_site": 0.4332044720649719,
+      "val_iou_equip": 0.35455194115638733,
+      "val_equipment_coverage": 0.4594369243296439
+    }
+  ],
+  "model_path": "C:\\Users\\hamza\\CADream-Generate-Editable-CAD\\tmp\\ml_prompt12_acceptance.pt"
+}

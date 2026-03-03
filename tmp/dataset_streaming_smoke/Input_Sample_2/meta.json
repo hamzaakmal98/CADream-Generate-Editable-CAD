@@ -1,0 +1,26 @@
+{
+  "file": "Input_Sample_2.dxf",
+  "case_id": "Input_Sample_2",
+  "global_bounds": {
+    "min": [
+      -79826.93359475,
+      -76460.50235847723
+    ],
+    "max": [
+      38450.13922628389,
+      6900.132106392269
+    ]
+  },
+  "viewport_aspect": 1.6,
+  "entity_count": 215,
+  "layer_counts_top": {
+    "0": 167,
+    "obstacle": 38,
+    "unit area outer contour": 3,
+    "cable trench": 2,
+    "inverter": 2,
+    "grid connection cabinet": 1,
+    "pv modules": 1,
+    "ridge line": 1
+  }
+}

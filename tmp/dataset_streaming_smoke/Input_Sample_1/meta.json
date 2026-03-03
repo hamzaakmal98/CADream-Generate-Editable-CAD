@@ -1,0 +1,27 @@
+{
+  "file": "Input_Sample_1.dxf",
+  "case_id": "Input_Sample_1",
+  "global_bounds": {
+    "min": [
+      -245576.23787678682,
+      -159954.6039638297
+    ],
+    "max": [
+      345809.1262203827,
+      256848.5683525179
+    ]
+  },
+  "viewport_aspect": 1.6,
+  "entity_count": 1044,
+  "layer_counts_top": {
+    "shading": 541,
+    "obstruction": 282,
+    "0": 181,
+    "inverter": 20,
+    "module": 9,
+    "cable path": 6,
+    "service panel": 3,
+    "ridge line": 1,
+    "unit area boundary": 1
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "schema_version": "ml-crop-labels-v1",
+  "crop_index": 0,
+  "labels": {},
+  "presence": {
+    "SITE_PLAN": 0.0,
+    "EQUIPMENT_LAYOUT": 0.0
+  }
+}
