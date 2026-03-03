@@ -1,0 +1,16 @@
+{
+  "schema_version": "ml-crop-labels-v1",
+  "crop_index": 49,
+  "labels": {
+    "EQUIPMENT_LAYOUT": [
+      0.2183366337780189,
+      0.05660392679471576,
+      0.9197064967917173,
+      0.7579737898084143
+    ]
+  },
+  "presence": {
+    "SITE_PLAN": 0.0,
+    "EQUIPMENT_LAYOUT": 1.0
+  }
+}

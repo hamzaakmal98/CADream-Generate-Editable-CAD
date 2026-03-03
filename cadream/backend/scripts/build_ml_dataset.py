@@ -21,6 +21,38 @@ from ml.streaming_stats import compute_uncapped_dxf_stats
 from ml.teacher import DEFAULT_VIEWPORT_ASPECT, generate_teacher_payload
 
 
+def _norm_name(value: str) -> str:
+    return " ".join(str(value).strip().lower().replace("_", " ").replace("-", " ").split())
+
+
+def _find_boundary_bbox_model(layer_stats: dict[str, dict[str, Any]]) -> list[float] | None:
+    exact_key = "unit area boundary"
+    fallback_keys = ["property", "boundary", "parcel", "lot", "easement", "setback"]
+
+    for layer_name, payload in layer_stats.items():
+        if _norm_name(layer_name) != exact_key:
+            continue
+        bbox = payload.get("bbox") if isinstance(payload, dict) else None
+        if isinstance(bbox, BBox) and bbox.is_valid():
+            return [float(bbox.minx), float(bbox.miny), float(bbox.maxx), float(bbox.maxy)]
+
+    selected: list[BBox] = []
+    for layer_name, payload in layer_stats.items():
+        normalized = _norm_name(layer_name)
+        if not any(key in normalized for key in fallback_keys):
+            continue
+        bbox = payload.get("bbox") if isinstance(payload, dict) else None
+        if isinstance(bbox, BBox) and bbox.is_valid():
+            selected.append(bbox)
+
+    if not selected:
+        return None
+    union = selected[0]
+    for bbox in selected[1:]:
+        union = union.union(bbox)
+    return [float(union.minx), float(union.miny), float(union.maxx), float(union.maxy)]
+
+
 def _save_gray_png(image_array: np.ndarray, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     Image.fromarray(image_array.astype(np.uint8), mode="L").save(output_path)
@@ -70,14 +102,21 @@ def _sample_mixed_crops(
     aspect: float,
     equip_bbox: BBox | None,
     site_bbox: BBox | None,
+    boundary_bbox: BBox | None,
     seed: int,
 ) -> list[tuple[BBox, str, float]]:
     count = max(1, int(crop_count))
     equip_n = int(round(count * 0.60))
-    site_n = int(round(count * 0.20))
-    rand_n = max(0, count - equip_n - site_n)
+    # If boundary_bbox exists, ensure at least 50% of SITE_PLAN crops are boundary-centered
+    if boundary_bbox is not None:
+        site_n = int(round(count * 0.30))  # 30% for site crops
+        boundary_n = int(round(count * 0.20))  # 20% for explicit boundary crops (added below)
+    else:
+        site_n = int(round(count * 0.20))
+        boundary_n = 0
+    rand_n = max(0, count - equip_n - site_n - boundary_n)
 
-    scales = np.asarray([0.35, 0.50, 0.70, 1.00], dtype=np.float64)
+    default_scales = np.asarray([0.35, 0.50, 0.70, 1.00], dtype=np.float64)
     rng = np.random.default_rng(int(seed))
     width = max(1e-6, global_bbox.maxx - global_bbox.minx)
     height = max(1e-6, global_bbox.maxy - global_bbox.miny)
@@ -87,11 +126,12 @@ def _sample_mixed_crops(
             return _bbox_center(global_bbox)
         return _bbox_center(anchor)
 
-    def _make_from_anchor(anchor: BBox | None, count_local: int, source: str) -> list[tuple[BBox, str, float]]:
+    def _make_from_anchor(anchor: BBox | None, count_local: int, source: str, scales_override: list[float] | None = None) -> list[tuple[BBox, str, float]]:
         out: list[tuple[BBox, str, float]] = []
         ax, ay = _anchor_center(anchor)
+        local_scales = np.asarray(scales_override, dtype=np.float64) if scales_override else default_scales
         for _ in range(max(0, int(count_local))):
-            scale = float(rng.choice(scales))
+            scale = float(rng.choice(local_scales))
             jitter_x = float(rng.normal(0.0, 0.10 * width * scale))
             jitter_y = float(rng.normal(0.0, 0.10 * height * scale))
             crop = _make_crop(global_bbox, ax + jitter_x, ay + jitter_y, scale=scale, aspect=aspect)
@@ -100,10 +140,51 @@ def _sample_mixed_crops(
 
     crops: list[tuple[BBox, str, float]] = []
     crops.extend(_make_from_anchor(equip_bbox, equip_n, "equip_anchor"))
-    crops.extend(_make_from_anchor(site_bbox, site_n, "site_anchor"))
+
+    site_scales: list[float] = []
+    if site_n > 0:
+        n_10 = int(round(0.40 * site_n))
+        n_07 = int(round(0.30 * site_n))
+        n_05 = int(round(0.20 * site_n))
+        n_rand = max(0, site_n - n_10 - n_07 - n_05)
+        site_scales.extend([1.0] * n_10)
+        site_scales.extend([0.7] * n_07)
+        site_scales.extend([0.5] * n_05)
+        for _ in range(n_rand):
+            site_scales.append(float(rng.uniform(0.35, 1.0)))
+        if len(site_scales) < site_n:
+            site_scales.extend([1.0] * (site_n - len(site_scales)))
+        site_scales = site_scales[:site_n]
+        rng.shuffle(site_scales)
+
+    # Add explicit boundary-centered crops (at least 50% of site+boundary crops)
+    boundary_scales = []
+    if boundary_n > 0:
+        n_10 = int(round(0.40 * boundary_n))
+        n_07 = int(round(0.30 * boundary_n))
+        n_05 = int(round(0.20 * boundary_n))
+        n_rand = max(0, boundary_n - n_10 - n_07 - n_05)
+        boundary_scales.extend([1.0] * n_10)
+        boundary_scales.extend([0.7] * n_07)
+        boundary_scales.extend([0.5] * n_05)
+        for _ in range(n_rand):
+            boundary_scales.append(float(rng.uniform(0.35, 1.0)))
+        if len(boundary_scales) < boundary_n:
+            boundary_scales.extend([1.0] * (boundary_n - len(boundary_scales)))
+        boundary_scales = boundary_scales[:boundary_n]
+        rng.shuffle(boundary_scales)
+
+    # Split site crops: half boundary-centered, half site-centered
+    if boundary_bbox is not None:
+        half = (site_n + boundary_n) // 2
+        crops.extend(_make_from_anchor(boundary_bbox, half, "site_anchor_boundary", scales_override=site_scales[:half] + boundary_scales[:half]))
+        crops.extend(_make_from_anchor(site_bbox, site_n + boundary_n - half, "site_anchor", scales_override=site_scales[half:] + boundary_scales[half:]))
+    else:
+        if site_n > 0:
+            crops.extend(_make_from_anchor(site_bbox, site_n, "site_anchor", scales_override=site_scales))
 
     for _ in range(rand_n):
-        scale = float(rng.choice(scales))
+        scale = float(rng.choice(default_scales))
         cx = float(rng.uniform(global_bbox.minx, global_bbox.maxx))
         cy = float(rng.uniform(global_bbox.miny, global_bbox.maxy))
         crop = _make_crop(global_bbox, cx, cy, scale=scale, aspect=aspect)
@@ -162,6 +243,7 @@ def _emit_crop_records(
     render_doc: dict[str, Any],
     teacher_boxes_model: dict[str, Any],
     teacher_conf: dict[str, float],
+    boundary_bbox_model: list[float] | None,
     global_bbox: BBox,
     out_size: int,
     viewport_aspect: float,
@@ -175,12 +257,17 @@ def _emit_crop_records(
     equip_values = equip_payload.get("bbox") if isinstance(equip_payload, dict) else None
     equip_teacher_box = _as_bbox(equip_values) if isinstance(equip_values, list) and len(equip_values) == 4 else None
 
+    boundary_bbox = _as_bbox(boundary_bbox_model) if isinstance(boundary_bbox_model, list) and len(boundary_bbox_model) == 4 else None
+
+    # If boundary exists, set min_label_intersection higher for SITE_PLAN
+    min_label_intersection_site = 0.35 if boundary_bbox is not None else min_label_intersection
     crops = _sample_mixed_crops(
         global_bbox=global_bbox,
         crop_count=int(crop_count),
         aspect=float(viewport_aspect),
         equip_bbox=equip_teacher_box,
         site_bbox=site_teacher_box,
+        boundary_bbox=boundary_bbox,
         seed=_stable_seed(case_dir.name),
     )
 
@@ -201,6 +288,7 @@ def _emit_crop_records(
             EQUIPMENT_LAYOUT: 0.0,
         }
 
+
         for page_key in (SITE_PLAN, EQUIPMENT_LAYOUT):
             payload = teacher_boxes_model.get(page_key) if isinstance(teacher_boxes_model, dict) else None
             bbox_values = payload.get("bbox") if isinstance(payload, dict) else None
@@ -218,7 +306,9 @@ def _emit_crop_records(
 
             teacher_area = max(1e-9, teacher_box.area())
             inter_ratio = inter.area() / teacher_area
-            if inter_ratio < float(min_label_intersection):
+            # Use higher min_label_intersection for SITE_PLAN if boundary exists
+            min_inter = min_label_intersection_site if page_key == SITE_PLAN else min_label_intersection
+            if inter_ratio < float(min_inter):
                 weights[page_key] = 0.0
                 confidences[page_key] = 0.0
                 presence[page_key] = 0.0
@@ -326,10 +416,13 @@ def build_dataset(
         layer_counts = teacher_debug.get("layer_counts") if isinstance(teacher_debug, dict) else {}
         top_layer_counts = dict(list(layer_counts.items())[:30]) if isinstance(layer_counts, dict) else {}
 
+        boundary_bbox_model = _find_boundary_bbox_model(uncapped_stats)
+
         meta = {
             "file": dxf_file.name,
             "case_id": case_id,
             "global_bounds": bounds,
+            "boundary_bbox_model": boundary_bbox_model,
             "viewport_aspect": float(viewport_aspect),
             "entity_count": int(uncapped_entity_count),
             "channels": [
@@ -352,6 +445,7 @@ def build_dataset(
             render_doc=render_doc,
             teacher_boxes_model=teacher_boxes_model,
             teacher_conf=teacher_conf,
+            boundary_bbox_model=boundary_bbox_model,
             global_bbox=uncapped_global_bbox,
             out_size=out_size,
             viewport_aspect=float(viewport_aspect),
@@ -372,6 +466,7 @@ def build_dataset(
 
         index_records.append(
             {
+                "record_type": "case",
                 "case_id": case_id,
                 "file": dxf_file.name,
                 "confidence": teacher_conf,
@@ -384,6 +479,24 @@ def build_dataset(
                 },
             }
         )
+
+        for crop_item in crop_manifest.get("items", []):
+            crop_index = int(crop_item.get("crop_index", -1))
+            input_rel = f"{case_id}/crops/{crop_index}/input.npy"
+            labels_rel = f"{case_id}/crops/{crop_index}/labels.json"
+            weights_rel = f"{case_id}/crops/{crop_index}/weights.json"
+            index_records.append(
+                {
+                    "record_type": "crop",
+                    "case_id": case_id,
+                    "crop_id": crop_index,
+                    "input_path": input_rel,
+                    "labels_path": labels_rel,
+                    "weights_path": weights_rel,
+                    "source": crop_item.get("source"),
+                    "scale": crop_item.get("scale"),
+                }
+            )
 
     payload = {
         "schema_version": "ml-dataset-v2",

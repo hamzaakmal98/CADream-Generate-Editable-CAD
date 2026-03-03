@@ -14,10 +14,13 @@ EQUIPMENT_LAYOUT = "EQUIPMENT_LAYOUT"
 @dataclass
 class DatasetItem:
     case_id: str
+    crop_id: str | None
     image: np.ndarray
     target: np.ndarray
     conf: np.ndarray
     presence: np.ndarray
+    boundary_bbox_model: np.ndarray | None
+    global_bbox_model: np.ndarray | None
 
 
 def _load_image(path: Path) -> np.ndarray:
@@ -28,10 +31,10 @@ def _load_image(path: Path) -> np.ndarray:
     return arr[None, :, :]
 
 
-def _load_image_4ch(path: Path) -> np.ndarray:
+def _load_image_5ch(path: Path) -> np.ndarray:
     arr = np.load(path)
-    if arr.ndim != 3 or arr.shape[0] != 4:
-        raise ValueError(f"Expected input_4ch.npy shape [4,H,W], got {arr.shape}")
+    if arr.ndim != 3 or arr.shape[0] != 5:
+        raise ValueError(f"Expected input_5ch.npy shape [5,H,W], got {arr.shape}")
     return arr.astype(np.float32) / 255.0
 
 
@@ -49,6 +52,24 @@ def _safe_read_json(path: Path) -> dict:
         return {}
 
 
+def _global_bbox_from_meta(meta_payload: dict) -> np.ndarray | None:
+    bounds = meta_payload.get("global_bounds") if isinstance(meta_payload, dict) else None
+    if not isinstance(bounds, dict):
+        return None
+    min_values = bounds.get("min")
+    max_values = bounds.get("max")
+    if not (isinstance(min_values, list) and isinstance(max_values, list) and len(min_values) == 2 and len(max_values) == 2):
+        return None
+    return np.asarray([float(min_values[0]), float(min_values[1]), float(max_values[0]), float(max_values[1])], dtype=np.float32)
+
+
+def _boundary_bbox_from_meta(meta_payload: dict) -> np.ndarray | None:
+    values = meta_payload.get("boundary_bbox_model") if isinstance(meta_payload, dict) else None
+    if not (isinstance(values, list) and len(values) == 4):
+        return None
+    return np.asarray([float(v) for v in values], dtype=np.float32)
+
+
 def _sorted_box(values: list[float]) -> list[float]:
     x1, y1, x2, y2 = [float(v) for v in values]
     return [min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2)]
@@ -57,6 +78,9 @@ def _sorted_box(values: list[float]) -> list[float]:
 def load_items(dataset_dir: Path) -> list[DatasetItem]:
     items: list[DatasetItem] = []
     for case_dir in sorted([path for path in dataset_dir.iterdir() if path.is_dir()]):
+        meta_payload = _safe_read_json(case_dir / "meta.json")
+        global_bbox_model = _global_bbox_from_meta(meta_payload)
+        boundary_bbox_model = _boundary_bbox_from_meta(meta_payload)
         teacher_conf_payload = _safe_read_json(case_dir / "teacher_confidence.json")
         base_site_conf = _clamp_conf(float(teacher_conf_payload.get(SITE_PLAN, 1.0)))
         base_equip_conf = _clamp_conf(float(teacher_conf_payload.get(EQUIPMENT_LAYOUT, 1.0)))
@@ -101,14 +125,17 @@ def load_items(dataset_dir: Path) -> list[DatasetItem]:
                     dtype=np.float32,
                 )
                 page_presence = np.clip(page_presence, 0.0, 1.0)
-                image_tensor = _load_image_4ch(input_npy)
+                image_tensor = _load_image_5ch(input_npy)
                 items.append(
                     DatasetItem(
-                        case_id=f"{case_dir.name}/crops/{crop_dir.name}",
+                        case_id=case_dir.name,
+                        crop_id=crop_dir.name,
                         image=image_tensor,
                         target=target,
                         conf=page_conf,
                         presence=page_presence,
+                        boundary_bbox_model=boundary_bbox_model,
+                        global_bbox_model=global_bbox_model,
                     )
                 )
             continue
@@ -130,6 +157,17 @@ def load_items(dataset_dir: Path) -> list[DatasetItem]:
             dtype=np.float32,
         )
         image_tensor = _load_image_4ch(image_4ch_path) if image_4ch_path.exists() else _load_image(image_path)
-        items.append(DatasetItem(case_id=case_dir.name, image=image_tensor, target=target, conf=page_conf, presence=page_presence))
+        items.append(
+            DatasetItem(
+                case_id=case_dir.name,
+                crop_id=None,
+                image=image_tensor,
+                target=target,
+                conf=page_conf,
+                presence=page_presence,
+                boundary_bbox_model=boundary_bbox_model,
+                global_bbox_model=global_bbox_model,
+            )
+        )
 
     return items

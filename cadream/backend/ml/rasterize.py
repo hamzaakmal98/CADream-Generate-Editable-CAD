@@ -10,8 +10,24 @@ from ml.rules import DOWNWEIGHT_LAYERS, EQUIP_LAYERS, NOISE_LAYERS, SITE_CONTEXT
 
 _NOISE_SUBSTR = tuple(normalize(item) for item in NOISE_LAYERS)
 _DOWNWEIGHT = {normalize(item) for item in DOWNWEIGHT_LAYERS}
+
 _EQUIPMENT_KEYWORDS = tuple(normalize(item) for item in EQUIP_LAYERS)
 _SITE_CONTEXT_KEYWORDS = tuple(normalize(item) for item in SITE_CONTEXT_LAYERS)
+
+# Boundary keywords for boundary channel
+_BOUNDARY_KEYWORDS = (
+    "unit area boundary",
+    "property",
+    "boundary",
+    "parcel",
+    "lot",
+    "easement",
+    "setback",
+)
+_BOUNDARY_KEYWORDS = tuple(normalize(item) for item in _BOUNDARY_KEYWORDS)
+
+def _is_boundary_layer(layer_name: str) -> bool:
+    return _contains_any(layer_name, _BOUNDARY_KEYWORDS)
 
 
 def is_noise_layer(layer_name: str) -> bool:
@@ -36,6 +52,7 @@ def _should_draw_layer(layer_name: str, mode: str) -> bool:
     layer = normalize(layer_name)
     is_noise = is_noise_layer(layer)
 
+
     if mode == "noise":
         return is_noise
 
@@ -47,6 +64,8 @@ def _should_draw_layer(layer_name: str, mode: str) -> bool:
     if mode == "equipment" and not _is_equipment_layer(layer):
         return False
     if mode == "site_context" and not _is_site_context_layer(layer):
+        return False
+    if mode == "boundary" and not _is_boundary_layer(layer):
         return False
     return True
 
@@ -243,15 +262,17 @@ def rasterize_render_doc_4ch(
     out_size: int = 512,
     bounds_override: tuple[float, float, float, float] | None = None,
 ) -> np.ndarray:
-        """
-        Returns uint8 tensor [4, H, W] in this channel order:
-            0: all_non_noise
-            1: equipment_layers_only
-            2: site_context_layers_only
-            3: noise_layers_only
-        """
-        channel_all = rasterize_render_doc(render_doc, out_size=out_size, mode="all", bounds_override=bounds_override)
-        channel_equipment = rasterize_render_doc(render_doc, out_size=out_size, mode="equipment", bounds_override=bounds_override)
-        channel_site_context = rasterize_render_doc(render_doc, out_size=out_size, mode="site_context", bounds_override=bounds_override)
-        channel_noise = rasterize_render_doc(render_doc, out_size=out_size, mode="noise", bounds_override=bounds_override)
-        return np.stack([channel_all, channel_equipment, channel_site_context, channel_noise], axis=0)
+    """
+    Returns uint8 tensor [5, H, W] in this channel order:
+        0: all_non_noise
+        1: equipment_layers_only
+        2: site_context_layers_only
+        3: noise_layers_only
+        4: boundary_layers_only
+    """
+    channel_all = rasterize_render_doc(render_doc, out_size=out_size, mode="all", bounds_override=bounds_override)
+    channel_equipment = rasterize_render_doc(render_doc, out_size=out_size, mode="equipment", bounds_override=bounds_override)
+    channel_site_context = rasterize_render_doc(render_doc, out_size=out_size, mode="site_context", bounds_override=bounds_override)
+    channel_noise = rasterize_render_doc(render_doc, out_size=out_size, mode="noise", bounds_override=bounds_override)
+    channel_boundary = rasterize_render_doc(render_doc, out_size=out_size, mode="boundary", bounds_override=bounds_override)
+    return np.stack([channel_all, channel_equipment, channel_site_context, channel_noise, channel_boundary], axis=0)
