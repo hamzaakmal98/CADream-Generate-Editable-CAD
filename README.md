@@ -1,5 +1,9 @@
 # CADream — Generate Editable CAD PlanSets
 
+## Demo Video
+
+[![Watch the demo on YouTube](https://img.youtube.com/vi/zMv_rB19UcQ/maxresdefault.jpg)](https://youtu.be/zMv_rB19UcQ)
+
 CADream is a DXF-first workflow for building editable BESS plan-set outputs.
 It combines:
 - a FastAPI backend for DXF parsing, validation, auto-page generation, SLD/page export, and packaging,
