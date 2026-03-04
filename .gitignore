@@ -1,16 +1,8 @@
-hackathon_assignment_extracted.txt
-template_project_pages_24_25.txt
-Stage 3 ¿C Hackathon Assignment-H3.pdf
-sample-files/CADream_Codebase_Plan_of_Action.pdf
-docs/HACKATHON_DELIVERABLES_ROADMAP.md
-docs/TEMPLATE_PROJECT_ANALYSIS.md
-docs/PLANSET_CONTRACTS.md
-docs/PLANSET_SITE_PAGE_PROFILES.md
-
+# Python bytecode and caches
 **/__pycache__/
 *.pyc
 
-# Python environments and caches
+# Python environments and tooling caches
 **/.venv/
 **/.pytest_cache/
 **/.mypy_cache/

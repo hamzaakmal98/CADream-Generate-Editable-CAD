@@ -18,7 +18,6 @@ It combines:
 - `sample-files` — sample DXFs (`Input_Sample_*.dxf`)
 - `dataset` — dataset assets and indexes for ML work
 - `schemas` — JSON schemas used in validation
-- `docs` — design/roadmap notes
 
 ## Prerequisites
 
