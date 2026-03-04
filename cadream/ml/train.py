@@ -85,6 +85,46 @@ def _cxcywh_to_xyxy_np(boxes: np.ndarray) -> np.ndarray:
     return np.clip(out, 0.0, 1.0)
 
 
+def _augment_batch(
+    images_np: np.ndarray,
+    targets_np: np.ndarray,
+    rng: np.random.Generator,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Random horizontal/vertical flips + per-channel intensity jitter.
+
+    images_np : [B, C, H, W] float32 in [0, 1]
+    targets_np: [B, 2, 4]   float32 xyxy in [0, 1]
+
+    Box transform:
+      h-flip: x -> 1-x  =>  [x1,y1,x2,y2] -> [1-x2, y1, 1-x1, y2]
+      v-flip: y -> 1-y  =>  [x1,y1,x2,y2] -> [x1, 1-y2, x2, 1-y1]
+    """
+    out_images = images_np.copy()
+    out_targets = targets_np.copy()
+
+    for i in range(images_np.shape[0]):
+        if rng.random() > 0.5:  # horizontal flip
+            out_images[i] = np.flip(out_images[i], axis=2).copy()
+            x1 = out_targets[i, :, 0].copy()
+            x2 = out_targets[i, :, 2].copy()
+            out_targets[i, :, 0] = np.minimum(1.0 - x2, 1.0 - x1)
+            out_targets[i, :, 2] = np.maximum(1.0 - x2, 1.0 - x1)
+
+        if rng.random() > 0.5:  # vertical flip
+            out_images[i] = np.flip(out_images[i], axis=1).copy()
+            y1 = out_targets[i, :, 1].copy()
+            y2 = out_targets[i, :, 3].copy()
+            out_targets[i, :, 1] = np.minimum(1.0 - y2, 1.0 - y1)
+            out_targets[i, :, 3] = np.maximum(1.0 - y2, 1.0 - y1)
+
+        # Per-channel intensity jitter in [0.75, 1.25]
+        for c in range(out_images.shape[1]):
+            scale = rng.uniform(0.75, 1.25)
+            out_images[i, c] = np.clip(out_images[i, c] * scale, 0.0, 1.0)
+
+    return out_images, out_targets
+
+
 def _coords_penalty(pred_cxcywh):
     widths = pred_cxcywh[..., 2]
     heights = pred_cxcywh[..., 3]
@@ -242,6 +282,7 @@ def train(
         for start in range(0, len(epoch_indices), max(1, batch)):
             batch_idx = epoch_indices[start : start + max(1, batch)]
             images_np, targets_np, presence_np = _batch_from_items(items, batch_idx)
+            images_np, targets_np = _augment_batch(images_np, targets_np, rng)
             images = torch.from_numpy(images_np).float()
             targets = torch.from_numpy(targets_np).float()
             presence_targets = torch.from_numpy(presence_np).float()
@@ -289,8 +330,8 @@ def train(
                         # Create mask for predicted site box
                         mask = _soft_box_mask(boundary_mask.shape[0], boundary_mask.shape[1], site_pred_boxes[i].unsqueeze(0)).squeeze(0)
                         boundary_in = (boundary_mask * mask).sum().item()
-                        boundary_coverage = boundary_in / (boundary_total + 1e-6)
-                        boundary_loss = 1.0 - boundary_coverage
+                        boundary_cov_ratio = boundary_in / (boundary_total + 1e-6)
+                        boundary_loss = 1.0 - boundary_cov_ratio
                         boundary_losses_batch.append(boundary_loss)
                     else:
                         boundary_losses_batch.append(0.0)

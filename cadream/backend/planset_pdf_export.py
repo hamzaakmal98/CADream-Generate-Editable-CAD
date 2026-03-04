@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
+import math
 from typing import Any
 
 from reportlab.lib.pagesizes import A3, landscape
@@ -8,6 +9,7 @@ from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 from pypdf import PdfReader, PdfWriter
+from cad_parser import dxf_to_render_json, extract_blocks, load_dxf_from_bytes, IGNORE_LAYERS
 
 from planset_manifest import build_plan_set_manifest
 from planset_auto_page_emitters import emit_auto_page_entities
@@ -115,6 +117,258 @@ def _draw_signature_box(
     except Exception:
         pdf.setFont("Helvetica", 6.2)
         pdf.drawCentredString(x + width / 2, y_bottom + height / 2, "[Invalid Engineer Signature Image]")
+
+
+
+def _compute_content_bounds(
+    entities: list[dict[str, Any]],
+) -> tuple[float, float, float, float] | None:
+    """Compute viewport bounds from content entities using Tukey-fence outlier removal.
+
+    Uses IQR-based fencing (Q1 - 1.5*IQR, Q3 + 1.5*IQR) to robustly exclude
+    title blocks or annotation entities that sit far outside the main site area,
+    even when they represent 10–20 % of all entities.
+    """
+    xs: list[float] = []
+    ys: list[float] = []
+
+    for entity in entities:
+        if not isinstance(entity, dict):
+            continue
+        entity_type = str(entity.get("type") or "").upper()
+        if entity_type == "LINE":
+            p1 = entity.get("p1")
+            p2 = entity.get("p2")
+            if isinstance(p1, list) and len(p1) >= 2:
+                xs.append(float(p1[0]))
+                ys.append(float(p1[1]))
+            if isinstance(p2, list) and len(p2) >= 2:
+                xs.append(float(p2[0]))
+                ys.append(float(p2[1]))
+        elif entity_type == "LWPOLYLINE":
+            for p in (entity.get("points") or []):
+                if isinstance(p, list) and len(p) >= 2:
+                    xs.append(float(p[0]))
+                    ys.append(float(p[1]))
+        elif entity_type in ("CIRCLE", "ARC"):
+            c = entity.get("center")
+            r = entity.get("r")
+            if isinstance(c, list) and len(c) >= 2 and isinstance(r, (int, float)):
+                cx, cy, rv = float(c[0]), float(c[1]), float(r)
+                xs += [cx - rv, cx + rv]
+                ys += [cy - rv, cy + rv]
+        elif entity_type in ("TEXT", "MTEXT", "INSERT"):
+            p = entity.get("pos")
+            if isinstance(p, list) and len(p) >= 2:
+                xs.append(float(p[0]))
+                ys.append(float(p[1]))
+
+    if len(xs) < 2 or len(ys) < 2:
+        return None
+
+    def _pct(arr: list[float], q: float) -> float:
+        arr_s = sorted(arr)
+        idx = q * (len(arr_s) - 1)
+        lo = int(math.floor(idx))
+        hi = min(lo + 1, len(arr_s) - 1)
+        return arr_s[lo] + (idx - lo) * (arr_s[hi] - arr_s[lo])
+
+    def _tukey_fence(vals: list[float]) -> tuple[float, float]:
+        q1 = _pct(vals, 0.25)
+        q3 = _pct(vals, 0.75)
+        iqr = max(q3 - q1, 1e-9)
+        return q1 - 1.5 * iqr, q3 + 1.5 * iqr
+
+    # Apply Tukey fences to remove outlier clusters (e.g. far-away title blocks)
+    x_lo, x_hi = _tukey_fence(xs)
+    y_lo, y_hi = _tukey_fence(ys)
+    xs_filt = [v for v in xs if x_lo <= v <= x_hi]
+    ys_filt = [v for v in ys if y_lo <= v <= y_hi]
+
+    # If fencing removed everything, fall back to raw min/max
+    if not xs_filt or not ys_filt:
+        xs_filt, ys_filt = xs, ys
+
+    bx0, bx1 = min(xs_filt), max(xs_filt)
+    by0, by1 = min(ys_filt), max(ys_filt)
+
+    if bx1 <= bx0 or by1 <= by0:
+        return None
+
+    return bx0, by0, bx1, by1
+
+
+def _transform_xy(x: float, y: float, *, tx: float, ty: float, rotation_deg: float, sx: float, sy: float) -> tuple[float, float]:
+    px = float(x) * float(sx)
+    py = float(y) * float(sy)
+    angle = math.radians(float(rotation_deg))
+    cos_a = math.cos(angle)
+    sin_a = math.sin(angle)
+    rx = px * cos_a - py * sin_a
+    ry = px * sin_a + py * cos_a
+    return (rx + float(tx), ry + float(ty))
+
+
+def _transform_render_entity(
+    entity: dict[str, Any],
+    *,
+    tx: float,
+    ty: float,
+    rotation_deg: float,
+    sx: float,
+    sy: float,
+) -> dict[str, Any] | None:
+    entity_type = str(entity.get("type") or "").upper()
+
+    if entity_type == "LINE":
+        p1 = entity.get("p1")
+        p2 = entity.get("p2")
+        if not (isinstance(p1, list) and len(p1) >= 2 and isinstance(p2, list) and len(p2) >= 2):
+            return None
+        x1, y1 = _transform_xy(float(p1[0]), float(p1[1]), tx=tx, ty=ty, rotation_deg=rotation_deg, sx=sx, sy=sy)
+        x2, y2 = _transform_xy(float(p2[0]), float(p2[1]), tx=tx, ty=ty, rotation_deg=rotation_deg, sx=sx, sy=sy)
+        return {
+            **entity,
+            "p1": [x1, y1],
+            "p2": [x2, y2],
+        }
+
+    if entity_type == "LWPOLYLINE":
+        points = entity.get("points") if isinstance(entity.get("points"), list) else []
+        out_points: list[list[float]] = []
+        for point in points:
+            if not isinstance(point, list) or len(point) < 2:
+                continue
+            x, y = _transform_xy(float(point[0]), float(point[1]), tx=tx, ty=ty, rotation_deg=rotation_deg, sx=sx, sy=sy)
+            out_points.append([x, y])
+        if len(out_points) < 2:
+            return None
+        return {
+            **entity,
+            "points": out_points,
+        }
+
+    if entity_type == "CIRCLE":
+        center = entity.get("center")
+        radius = entity.get("r")
+        if not (isinstance(center, list) and len(center) >= 2 and isinstance(radius, (int, float))):
+            return None
+        cx, cy = _transform_xy(float(center[0]), float(center[1]), tx=tx, ty=ty, rotation_deg=rotation_deg, sx=sx, sy=sy)
+        scale = max(0.0001, (abs(float(sx)) + abs(float(sy))) * 0.5)
+        return {
+            **entity,
+            "center": [cx, cy],
+            "r": abs(float(radius)) * scale,
+        }
+
+    if entity_type == "ARC":
+        center = entity.get("center")
+        radius = entity.get("r")
+        start_angle = entity.get("start_angle")
+        end_angle = entity.get("end_angle")
+        if not (
+            isinstance(center, list)
+            and len(center) >= 2
+            and isinstance(radius, (int, float))
+            and isinstance(start_angle, (int, float))
+            and isinstance(end_angle, (int, float))
+        ):
+            return None
+        cx, cy = _transform_xy(float(center[0]), float(center[1]), tx=tx, ty=ty, rotation_deg=rotation_deg, sx=sx, sy=sy)
+        scale = max(0.0001, (abs(float(sx)) + abs(float(sy))) * 0.5)
+        return {
+            **entity,
+            "center": [cx, cy],
+            "r": abs(float(radius)) * scale,
+            "start_angle": float(start_angle) + float(rotation_deg),
+            "end_angle": float(end_angle) + float(rotation_deg),
+        }
+
+    if entity_type in ("TEXT", "MTEXT"):
+        pos = entity.get("pos")
+        if not (isinstance(pos, list) and len(pos) >= 2):
+            return None
+        px, py = _transform_xy(float(pos[0]), float(pos[1]), tx=tx, ty=ty, rotation_deg=rotation_deg, sx=sx, sy=sy)
+        return {
+            **entity,
+            "pos": [px, py],
+        }
+
+    if entity_type == "INSERT":
+        pos = entity.get("pos")
+        if not (isinstance(pos, list) and len(pos) >= 2):
+            return None
+        px, py = _transform_xy(float(pos[0]), float(pos[1]), tx=tx, ty=ty, rotation_deg=rotation_deg, sx=sx, sy=sy)
+        return {
+            **entity,
+            "pos": [px, py],
+            "rotation": float(entity.get("rotation", 0.0) or 0.0) + float(rotation_deg),
+            "xscale": float(entity.get("xscale", 1.0) or 1.0) * float(sx),
+            "yscale": float(entity.get("yscale", 1.0) or 1.0) * float(sy),
+        }
+
+    return entity
+
+
+def _expand_insert_entities(
+    entities: list[dict[str, Any]],
+    block_entities: dict[str, Any],
+    *,
+    depth: int = 0,
+    max_depth: int = 2,
+    max_output: int = 120000,
+) -> list[dict[str, Any]]:
+    output: list[dict[str, Any]] = []
+
+    for entity in entities:
+        if len(output) >= max_output:
+            break
+        if not isinstance(entity, dict):
+            continue
+
+        entity_type = str(entity.get("type") or "").upper()
+        if entity_type != "INSERT":
+            output.append(entity)
+            continue
+
+        if depth >= max_depth:
+            output.append(entity)
+            continue
+
+        block_name = entity.get("name")
+        block_items = block_entities.get(block_name) if isinstance(block_name, str) else None
+        if not isinstance(block_items, list) or not block_items:
+            output.append(entity)
+            continue
+
+        pos = entity.get("pos") if isinstance(entity.get("pos"), list) else [0.0, 0.0]
+        tx = float(pos[0]) if len(pos) >= 1 and isinstance(pos[0], (int, float)) else 0.0
+        ty = float(pos[1]) if len(pos) >= 2 and isinstance(pos[1], (int, float)) else 0.0
+        rotation = float(entity.get("rotation", 0.0) or 0.0)
+        sx = float(entity.get("xscale", 1.0) or 1.0)
+        sy = float(entity.get("yscale", 1.0) or 1.0)
+
+        transformed_children: list[dict[str, Any]] = []
+        for child in block_items:
+            if not isinstance(child, dict):
+                continue
+            transformed = _transform_render_entity(child, tx=tx, ty=ty, rotation_deg=rotation, sx=sx, sy=sy)
+            if transformed is not None:
+                transformed_children.append(transformed)
+
+        if transformed_children:
+            expanded_children = _expand_insert_entities(
+                transformed_children,
+                block_entities,
+                depth=depth + 1,
+                max_depth=max_depth,
+                max_output=max_output - len(output),
+            )
+            output.extend(expanded_children)
+        else:
+            output.append(entity)
+
+    return output
 
 
 def _fixed_page_numbers_from_manifest(pages: list[dict[str, Any]]) -> list[int]:
@@ -312,6 +566,161 @@ def _draw_content_preview(
     page_number = int(page_info.get("page_number", 0) or 0)
     if page_number <= 0:
         return
+
+    # Prefer the original source DXF bytes for direct, reliable rendering.
+    # Fall back to auto-page DXF if source bytes are not in this payload.
+    _raw_source = payload.get("__source_dxf_bytes")
+    if isinstance(_raw_source, (bytes, bytearray)):
+        dxf_bytes_to_render: bytes | None = bytes(_raw_source)
+    else:
+        page_dxf_files = payload.get("__auto_page_dxf_files") if isinstance(payload.get("__auto_page_dxf_files"), dict) else {}
+        dxf_key = f"planset-page-{str(page_number).zfill(2)}.dxf"
+        _page_bytes = page_dxf_files.get(dxf_key)
+        dxf_bytes_to_render = bytes(_page_bytes) if isinstance(_page_bytes, (bytes, bytearray)) else None
+
+    if dxf_bytes_to_render is not None:
+        try:
+            source_doc = load_dxf_from_bytes(dxf_bytes_to_render)
+            render_doc = dxf_to_render_json(source_doc, max_entities=60000)
+            entities = render_doc.get("entities") if isinstance(render_doc, dict) else None
+            if not isinstance(entities, list) or not entities:
+                raise ValueError("DXF has no renderable entities")
+
+            blocks = extract_blocks(source_doc, max_entities_per_block=12000)
+            expanded_entities = _expand_insert_entities(entities, blocks)
+
+            # Compute viewport from source DXF content, excluding CADREAM
+            # overlay layers (which may be in screen/canvas coordinates).
+            content_entities = [
+                e for e in expanded_entities
+                if isinstance(e, dict)
+                and not str(e.get("layer") or "").upper().startswith("CADREAM")
+                and str(e.get("layer") or "") not in IGNORE_LAYERS
+            ]
+            view_bounds = _compute_content_bounds(content_entities or expanded_entities)
+            if view_bounds is None:
+                raise ValueError("DXF bounds are degenerate")
+
+            min_x, min_y, max_x, max_y = view_bounds
+            if max_x <= min_x or max_y <= min_y:
+                raise ValueError("DXF bounds are degenerate")
+
+            clip_x1, clip_y1, clip_x2, clip_y2 = 24.0, 86.0, 312.0, 266.0
+            clip_w = clip_x2 - clip_x1
+            clip_h = clip_y2 - clip_y1
+
+            src_w = max_x - min_x
+            src_h = max_y - min_y
+            fit = min(clip_w / src_w, clip_h / src_h)
+            draw_w = src_w * fit
+            draw_h = src_h * fit
+            off_x = clip_x1 + (clip_w - draw_w) * 0.5
+            off_y = clip_y1 + (clip_h - draw_h) * 0.5
+
+            def map_xy(x_raw: float, y_raw: float) -> tuple[float, float]:
+                x_mm = off_x + (x_raw - min_x) * fit
+                y_mm = off_y + (y_raw - min_y) * fit
+                return mm_to_points(x_mm), mm_to_points(y_mm)
+
+            pdf.saveState()
+            path = pdf.beginPath()
+            path.rect(mm_to_points(clip_x1), mm_to_points(clip_y1), mm_to_points(clip_x2 - clip_x1), mm_to_points(clip_y2 - clip_y1))
+            pdf.clipPath(path, stroke=0, fill=0)
+            pdf.setLineWidth(0.7)
+
+            for entity in expanded_entities:
+                if not isinstance(entity, dict):
+                    continue
+                layer_name = str(entity.get("layer") or "").upper()
+                if layer_name.startswith("CADREAM") or layer_name in IGNORE_LAYERS:
+                    continue
+                entity_type = str(entity.get("type") or "").upper()
+
+                if entity_type == "LINE":
+                    p1 = entity.get("p1")
+                    p2 = entity.get("p2")
+                    if isinstance(p1, list) and len(p1) >= 2 and isinstance(p2, list) and len(p2) >= 2:
+                        x1, y1 = map_xy(float(p1[0]), float(p1[1]))
+                        x2, y2 = map_xy(float(p2[0]), float(p2[1]))
+                        pdf.line(x1, y1, x2, y2)
+                    continue
+
+                if entity_type == "LWPOLYLINE":
+                    points = entity.get("points") if isinstance(entity.get("points"), list) else []
+                    path2 = pdf.beginPath()
+                    started = False
+                    first_x = first_y = 0.0
+                    last_x = last_y = 0.0
+                    for point in points:
+                        if not isinstance(point, list) or len(point) < 2:
+                            continue
+                        x, y = map_xy(float(point[0]), float(point[1]))
+                        if not started:
+                            path2.moveTo(x, y)
+                            first_x, first_y = x, y
+                            started = True
+                        else:
+                            path2.lineTo(x, y)
+                        last_x, last_y = x, y
+                    if started:
+                        if bool(entity.get("closed")) and (abs(last_x - first_x) > 1e-6 or abs(last_y - first_y) > 1e-6):
+                            path2.lineTo(first_x, first_y)
+                        pdf.drawPath(path2, stroke=1, fill=0)
+                    continue
+
+                if entity_type == "CIRCLE":
+                    center = entity.get("center")
+                    radius = entity.get("r")
+                    if isinstance(center, list) and len(center) >= 2 and isinstance(radius, (int, float)):
+                        cx, cy = map_xy(float(center[0]), float(center[1]))
+                        radius_pt = mm_to_points(abs(float(radius)) * fit)
+                        pdf.circle(cx, cy, radius_pt, stroke=1, fill=0)
+                    continue
+
+                if entity_type == "ARC":
+                    center = entity.get("center")
+                    radius = entity.get("r")
+                    start_angle = entity.get("start_angle")
+                    end_angle = entity.get("end_angle")
+                    if (
+                        isinstance(center, list)
+                        and len(center) >= 2
+                        and isinstance(radius, (int, float))
+                        and isinstance(start_angle, (int, float))
+                        and isinstance(end_angle, (int, float))
+                    ):
+                        cx, cy = map_xy(float(center[0]), float(center[1]))
+                        radius_pt = mm_to_points(abs(float(radius)) * fit)
+                        pdf.arc(
+                            cx - radius_pt,
+                            cy - radius_pt,
+                            cx + radius_pt,
+                            cy + radius_pt,
+                            float(start_angle),
+                            float(end_angle),
+                        )
+                    continue
+
+                if entity_type == "INSERT":
+                    pos = entity.get("pos")
+                    if isinstance(pos, list) and len(pos) >= 2:
+                        px, py = map_xy(float(pos[0]), float(pos[1]))
+                        half = mm_to_points(1.8)
+                        pdf.rect(px - half, py - half, 2 * half, 2 * half, stroke=1, fill=0)
+                    continue
+
+                if entity_type in ("TEXT", "MTEXT"):
+                    text = entity.get("text")
+                    pos = entity.get("pos")
+                    if isinstance(text, str) and isinstance(pos, list) and len(pos) >= 2:
+                        pdf.setFont("Helvetica", 6)
+                        tx, ty = map_xy(float(pos[0]), float(pos[1]))
+                        pdf.drawString(tx, ty, text[:72])
+
+            pdf.restoreState()
+            return
+        except Exception:
+            pass
 
     entities = emit_auto_page_entities(payload, page_number)
     if not entities:

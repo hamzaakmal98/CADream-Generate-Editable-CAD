@@ -66,6 +66,34 @@ export async function exportPlansetPdfResponse(payload: ExportRequestPayload): P
   );
 }
 
+export async function exportPlansetFullPdfFromSourceResponse(args: {
+  file: File;
+  payload: ExportRequestPayload;
+}): Promise<Response> {
+  const formData = new FormData();
+  formData.append("file", args.file);
+  formData.append("payload_json", JSON.stringify(args.payload));
+
+  const response = await fetch("/api/planset/pages/full-from-source/pdf-export", {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(await resolveErrorDetail(response, "Failed to generate full PlanSet PDF from source."));
+  }
+
+  return response;
+}
+
+export async function exportPlansetFullPdfResponse(payload: ExportRequestPayload): Promise<Response> {
+  return postBinary(
+    "/api/planset/pages/full/pdf-export",
+    payload,
+    "Failed to generate full PlanSet PDF.",
+  );
+}
+
 export async function exportSingleLineDxf(payload: { sld_session: unknown }): Promise<Blob> {
   const response = await postBinary(
     "/api/planset/pages-24-25/single-line/export",

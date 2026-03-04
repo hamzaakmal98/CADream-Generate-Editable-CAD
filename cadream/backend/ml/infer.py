@@ -101,6 +101,10 @@ def infer_view_specs_from_dxf_bytes(dxf_bytes: bytes, model_path: str, viewport_
     layer_stats, global_bbox = compute_layer_stats(render_doc)
     input_4ch = rasterize_render_doc_4ch(render_doc, out_size=512)
     all_img = input_4ch[0]
+    equip_gate_img = input_4ch[1] if input_4ch.shape[0] > 1 else all_img
+    site_context_img = input_4ch[2] if input_4ch.shape[0] > 2 else all_img
+    boundary_img = input_4ch[4] if input_4ch.shape[0] > 4 else np.zeros_like(all_img)
+    site_gate_img = np.maximum(site_context_img, boundary_img)
 
     teacher_model, teacher_img, teacher_conf, teacher_debug = generate_teacher_payload(render_doc, viewport_aspect=viewport_aspect)
 
@@ -129,8 +133,9 @@ def infer_view_specs_from_dxf_bytes(dxf_bytes: bytes, model_path: str, viewport_
             model_bb = model_img[page_type]
             model_c = teacher_c
 
-            metrics_t = box_metrics(all_img, teacher_bb)
-            metrics_m = box_metrics(all_img, model_bb)
+            gate_img = site_gate_img if page_type == SITE_PLAN else equip_gate_img
+            metrics_t = box_metrics(gate_img, teacher_bb)
+            metrics_m = box_metrics(gate_img, model_bb)
             chosen_bb, chosen_source, info = choose_box(
                 page_type,
                 teacher_bb,
