@@ -1,0 +1,12 @@
+{
+  "schema_version": "ml-crop-weights-v1",
+  "crop_index": 40,
+  "confidences": {
+    "SITE_PLAN": 0.23819444444444435,
+    "EQUIPMENT_LAYOUT": 0.11689373831364726
+  },
+  "weights": {
+    "SITE_PLAN": 0.23819444444444435,
+    "EQUIPMENT_LAYOUT": 0.11689373831364726
+  }
+}

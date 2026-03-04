@@ -63,10 +63,15 @@ def predict_boxes(model_path: str, image_tensor: np.ndarray) -> np.ndarray:
 
     with torch.no_grad():
         x = torch.from_numpy(image_tensor).float()
+        # If inference produces more channels than the model expects (e.g. rasterizer
+        # was updated from 4-ch to 5-ch after training), trim to the trained channel
+        # count so the forward pass doesn't fail with a shape error.
+        if x.shape[1] > input_channels:
+            x = x[:, :input_channels, :, :]
         pred_base, _ = model(x)
         pred_base = pred_base.cpu().numpy()
 
-        x_flip = torch.flip(x, dims=[3])
+        x_flip = torch.flip(x, dims=[3])  # x is already channel-trimmed above
         pred_flip, _ = model(x_flip)
         pred_flip = pred_flip.cpu().numpy()
         pred_flip[..., 0] = 1.0 - pred_flip[..., 0]

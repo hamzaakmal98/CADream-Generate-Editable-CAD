@@ -12,7 +12,9 @@ from planset_request_envelope import enrich_payload_with_normalized_inputs
 from planset_right_panel_validation import validate_right_panel_payload
 from planset_site_page_profiles import get_site_page_profile, get_site_page_profiles
 from planset_sld_pages import export_sld_vertical_slice_zip, generate_sld_vertical_slice_pages_24_25, generate_sld_pages_pdf
-from planset_auto_pages_dxf import export_auto_pages_dxf_zip
+from planset_auto_pages_dxf import export_auto_pages_dxf_zip, generate_auto_pages_dxf_files
+from planset_parametric_pages import generate_parametric_page_dxf_files
+from planset_static_template_pages import generate_static_template_page_dxf_files
 from planset_package import export_planset_package_zip
 from planset_template_sample import generate_common_template_sample_dxf
 from page_generation_pipeline import generate_page_zip_from_source_bytes
@@ -20,6 +22,52 @@ import json
 import hashlib
 
 SOURCE_DXF_CACHE: dict[str, bytes] = {}
+
+
+def _build_full_planset_pdf_from_source_bytes(request_payload: dict, source_bytes: bytes) -> bytes:
+    if not source_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded DXF file is empty")
+
+    try:
+        normalized_payload = enrich_payload_with_normalized_inputs(request_payload)
+    except Exception:
+        normalized_payload = dict(request_payload)
+        normalized_payload["normalized_inputs"] = {}
+
+    try:
+        _validate_right_panel_metadata_or_raise(normalized_payload)
+    except Exception:
+        pass
+
+    working_payload = dict(normalized_payload)
+    working_payload["__source_dxf_bytes"] = source_bytes
+
+    if not isinstance(working_payload.get("site_placements"), dict):
+        working_payload["site_placements"] = {"schema_version": "v1", "entities": {"bess": [], "poi": None, "cable_paths": []}}
+    if not isinstance(working_payload.get("sld_session"), dict):
+        working_payload["sld_session"] = {"schema_version": "sld-v1", "nodes": [], "edges": [], "tool_settings": {"tool_mode": "select"}}
+
+    manifest = build_plan_set_manifest(working_payload)
+    auto_files, _ = generate_auto_pages_dxf_files(working_payload)
+    parametric_files = generate_parametric_page_dxf_files(working_payload)
+    _ = generate_static_template_page_dxf_files(working_payload)
+
+    try:
+        sld_pages = generate_sld_vertical_slice_pages_24_25(working_payload)
+        page24 = sld_pages.get("page24.dxf")
+        page25 = sld_pages.get("page25.dxf")
+        if isinstance(page24, (bytes, bytearray)) and isinstance(page25, (bytes, bytearray)):
+            auto_files["planset-page-24.dxf"] = bytes(page24)
+            auto_files["planset-page-25.dxf"] = bytes(page25)
+    except Exception:
+        pass
+
+    page_dxf_files: dict[str, bytes] = {}
+    page_dxf_files.update(auto_files)
+    page_dxf_files.update(parametric_files)
+    working_payload["__auto_page_dxf_files"] = page_dxf_files
+
+    return generate_planset_pages_pdf(working_payload)
 
 
 def _download_response(content: bytes, *, media_type: str, filename: str) -> Response:
@@ -318,6 +366,46 @@ async def export_planset_fixed_pages_pdf(payload: dict):
         return _download_response(pdf_bytes, media_type="application/pdf", filename="planset-fixed-pages.pdf")
 
     return _run_with_bad_request("Plan-set fixed pages PDF export failed", _operation)
+
+
+@app.post("/planset/pages/full-from-source/pdf-export")
+async def export_planset_full_pdf_from_source(
+    file: UploadFile = File(...),
+    payload_json: str = Form(...),
+):
+    async def _operation() -> Response:
+        source_bytes = await file.read()
+
+        try:
+            request_payload = json.loads(payload_json)
+        except Exception as error:
+            raise HTTPException(status_code=400, detail=f"Invalid payload_json: {error}")
+
+        if not isinstance(request_payload, dict):
+            raise HTTPException(status_code=400, detail="payload_json must decode to an object")
+        pdf_bytes = _build_full_planset_pdf_from_source_bytes(request_payload, source_bytes)
+
+        return _download_response(pdf_bytes, media_type="application/pdf", filename="planset-pages.pdf")
+
+    return await _run_async_with_bad_request("Plan-set full PDF export from source failed", _operation)
+
+
+@app.post("/planset/pages/full/pdf-export")
+async def export_planset_full_pdf(payload: dict):
+    def _operation() -> Response:
+        request_payload = payload if isinstance(payload, dict) else {}
+        source_token = request_payload.get("source_token")
+        if not isinstance(source_token, str) or source_token not in SOURCE_DXF_CACHE:
+            raise HTTPException(
+                status_code=400,
+                detail="Source DXF is not available in backend cache. Please re-upload the DXF in this session, then generate PlanSet PDF again.",
+            )
+
+        source_bytes = SOURCE_DXF_CACHE[source_token]
+        pdf_bytes = _build_full_planset_pdf_from_source_bytes(request_payload, source_bytes)
+        return _download_response(pdf_bytes, media_type="application/pdf", filename="planset-pages.pdf")
+
+    return _run_with_bad_request("Plan-set full PDF export failed", _operation)
 
 
 @app.post("/planset/generate-from-dxf")

@@ -38,6 +38,17 @@ def _load_image_5ch(path: Path) -> np.ndarray:
     return arr.astype(np.float32) / 255.0
 
 
+def _load_image_4ch(path: Path) -> np.ndarray:
+    """Load a multi-channel .npy raster produced by rasterize_render_doc_4ch.
+    Despite the name the function actually produces 5 channels, so we accept
+    any channel count in {4, 5} and return it normalised to [0, 1].
+    """
+    arr = np.load(path)
+    if arr.ndim != 3 or arr.shape[0] not in (4, 5):
+        raise ValueError(f"Expected input_4ch.npy shape [C,H,W] with C in (4,5), got {arr.shape}")
+    return arr.astype(np.float32) / 255.0
+
+
 def _clamp_conf(value: float, minimum: float = 0.0, maximum: float = 1.0) -> float:
     return float(max(minimum, min(maximum, float(value))))
 
@@ -53,7 +64,8 @@ def _safe_read_json(path: Path) -> dict:
 
 
 def _global_bbox_from_meta(meta_payload: dict) -> np.ndarray | None:
-    bounds = meta_payload.get("global_bounds") if isinstance(meta_payload, dict) else None
+    # Accept both "global_bounds" (legacy) and "bounds" (current schema)
+    bounds = meta_payload.get("global_bounds") or meta_payload.get("bounds") if isinstance(meta_payload, dict) else None
     if not isinstance(bounds, dict):
         return None
     min_values = bounds.get("min")
@@ -78,10 +90,10 @@ def _sorted_box(values: list[float]) -> list[float]:
 def load_items(dataset_dir: Path) -> list[DatasetItem]:
     items: list[DatasetItem] = []
     for case_dir in sorted([path for path in dataset_dir.iterdir() if path.is_dir()]):
-        meta_payload = _safe_read_json(case_dir / "meta.json")
+        meta_payload = _safe_read_json(case_dir / "meta.json") or _safe_read_json(case_dir / "input_meta.json")
         global_bbox_model = _global_bbox_from_meta(meta_payload)
         boundary_bbox_model = _boundary_bbox_from_meta(meta_payload)
-        teacher_conf_payload = _safe_read_json(case_dir / "teacher_confidence.json")
+        teacher_conf_payload = _safe_read_json(case_dir / "teacher_confidence.json") or _safe_read_json(case_dir / "teacher_debug.json")
         base_site_conf = _clamp_conf(float(teacher_conf_payload.get(SITE_PLAN, 1.0)))
         base_equip_conf = _clamp_conf(float(teacher_conf_payload.get(EQUIPMENT_LAYOUT, 1.0)))
 

@@ -7,7 +7,7 @@ import { useBessEditing } from "./hooks/useBessEditing";
 import { useCableRouting } from "./hooks/useCableRouting";
 import { useProjectActions } from "./hooks/useProjectActions";
 import { useSldEditor } from "./hooks/useSldEditor";
-import { exportPlansetPdfResponse, generatePagesFromDxfZip } from "./api/planset";
+import { exportPlansetFullPdfFromSourceResponse, exportPlansetFullPdfResponse, generatePagesFromDxfZip } from "./api/planset";
 import type {
   PointOfInterconnection,
   RenderDoc,
@@ -467,6 +467,15 @@ export default function App() {
   }
 
   async function onExportPagesPdfFromInterfaceA() {
+    if (!uploadedSourceFile) {
+      setCadIrValidationState({
+        level: "error",
+        title: "Source File Required",
+        messages: ["Upload a DXF file in this session before generating the full PlanSet PDF."],
+      });
+      return;
+    }
+
     setIsExportingPlansetPdf(true);
     setPlansetPdfProgress(2);
 
@@ -477,13 +486,25 @@ export default function App() {
     }, 500);
 
     try {
-      const res = await exportPlansetPdfResponse({
+      const fullPayload = {
         total_pages: 49,
-        cad_ir: cadIr,
+        cad_ir: doc ?? { schemaVersion: "cad-ir-v1" },
         site_placements: sitePlacementPayload,
         sld_session: sldEditor.session,
+        source_token: doc?.source_token,
+        source_file_name: uploadedSourceFile.name,
         right_panel_metadata: rightPanelMetadata,
-      });
+      };
+
+      let res: Response;
+      try {
+        res = await exportPlansetFullPdfResponse(fullPayload);
+      } catch {
+        res = await exportPlansetFullPdfFromSourceResponse({
+          file: uploadedSourceFile,
+          payload: fullPayload,
+        });
+      }
 
       window.clearInterval(preparationTimer);
 
@@ -531,7 +552,15 @@ export default function App() {
       }
 
       triggerFileDownload(blob, "planset-pages.pdf");
+
+      setGeneratedPageNumbers(Array.from({ length: 49 }, (_, index) => index + 1));
       setPlansetPdfProgress(100);
+    } catch (error) {
+      setCadIrValidationState({
+        level: "error",
+        title: "PlanSet PDF Generation Failed",
+        messages: [error instanceof Error ? error.message : "Failed to generate full PlanSet PDF."],
+      });
     } finally {
       window.clearInterval(preparationTimer);
       setTimeout(() => {
