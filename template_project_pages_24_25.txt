@@ -1,0 +1,136 @@
+
+===== PAGE 24 =====
+SOLDERINGROOMWELDINGROOM
+34'-1078" 17'-41516"
+LP3LP4LP2LP1LP
+EQOREMain BuildingDisconnect
+Sheet No.Drawn by:Checked by:Approved by:Date:Sheet
+Revision
+Scale
+REV.DATEDESCRIPTION
+SYSTEM INFORMATION
+ENGINEER OF RECORD
+CUSTOMER INFORMATION
+AHJEQORE PROJECT
+DESIGNER
+PAGE NOTES
+Century-TywoodHolliston, MATown of Holliston, MA
+Company: EQORE Inc.Address: 444 Somerville Ave,Somerville, MA, 02143Website: www.eqore.netPhone: 786-234-2655Contact: Donald Groh
+Name: Century-Tywood J3 CorpAddress: 79 Lowland St                Holliston, MA, 01747Website: www.century-tywood.com/Phone: (508)-422-8552Contact: Jack Mahoney
+11/03/2025DGDG A
+AC System Size: 380kW (InternallyDe-Rated from 1250kW)Inverter Model: Dynapower CPS1250DC System Size: 760kWhBESS: Gotion Edge 760
+As Noted
+Century Tywood - Single Line Diagram
+ESS-13.0
+UtilityGrid
+1
+I
+11 Ø350
+8870(8370)2500(3000)
+200Ø 1000
+Transformer
+BESS SpecificationsModel NameGotion Edge760Model NumberESD1267-05P760-GNominal Energy760kWhNominal Voltage1267.2VOperating Voltage Range1069.2V ~ 1425.6VIP RatingIP55Fire SuppressionAerosol + dry pipe sprinkler system + PACKimmersionDimension (W x D x H)55.1 in x 94.5 in x 98.4 inWeight~8 tonsConduit ScheduleTag IDConduit SizeConductorNeutralGround1 2 x 6" EMT Conduit2 x 700MCM 75°C Rated Aluminum orEquivalent Ampacity Conductor Per Phase2 x 7000MCM 75°C RatedAluminum or Equivalent AmpacityConductor3/0 75°C Rated Aluminum orEquivalent Ampacity conductor2 2 x 6" PVC Conduit2 x 700MCM 75°C Rated Aluminum orEquivalent Ampacity Conductor Per Phase2 x 7000MCM 75°C RatedAluminum or Equivalent AmpacityConductor3/0 75°C Rated Aluminum orEquivalent Ampacity conductor3 2 x 4" EMT Conduit2 x 500MCM 75°C Rated Copper or EquivalentAmpacity Conductor Per Phase2 x 500MCM 75°C Rated Copper orEquivalent Ampacity Conductor3/0 75°C Rated Aluminum orEquivalent Ampacity conductor4 2 x 3" EMT Conduit2 x 500MCM 75°C Rated Copper or EquivalentAmpacity Conductor Per PhaseN/A3/0 75°C Rated Aluminum orEquivalent Ampacity conductor5 1 x 4" EMT Conduit1/0 DLO Southwire 44020, 2kV Heavy DutyFlexible Power Cable (HDFPC) DLO, Rated90°C Dry or Wet. 2kV Type RHH/RHW-2 orEquivalentN/A3/0 75°C Rated Aluminum orEquivalent Ampacity conductor6 1" Conduit or N/A if EQOREcomputing unit direct mount12 AWG Copper12 AWG Copper12 AWG Copper7 1" Conduit12 AWG Copper12 AWG Copper12 AWG Copper8 1" Conduit or N/A if EQOREcomputing unit direct mountPrebuilt Wiring HarnessN/A N/A9 1-1/2 Inch EMTCAT6 or Equivalent Data CableN/A N/A101-1/2 Inch PVCCAT6 or Equivalent Data CableN/A N/A111 Inch PVCCAT6 or Equivalent Data CableN/A N/A121 Inch PVCCAT6 or Equivalent Data CableN/A N/A
+Existing Ground
+Existing Ground
+MainDisconnect
+Battery System Electrical Disconnect SpecificationsTypeSingle Throw DisconnectWeather RatingNEMA 3RMax Amps600AMax Voltage600V AC
+EQOREComputing Unit
+Main Distribution Panel
+120V SupplyPowerCommunication
+480V Input forVoltage  Sensing
+ACINPUT/OUTPUTCom.
+/var/folders/jv/z8dknhp97vd2jtchs661n4hw0000gn/T/TemporaryItems/NSIRD_screencaptureui_gOQmy1/Screenshot 2025-01-12 at 6.12.09 PM.png
+3 Battery SystemElectrical Disconnect
+Load
+CurrentSensor Input
+1
+6
+8 Battery Storage System Breaker SpecificationsTypeMoldedBrandCutler-Hammer EatonModelHLD3600Max Amps600AMax Voltage600V ACPhase3AIC Ratings65kA@480V
+11 10
+UtilityMeter ExistingTransformer208/120VSubpanel7
+Battery StorageSystem Breaker
+Interconnecting Pole: 54 - 6A
+120VTransformerBreaker
+TransformerBattery Storage System Breaker(Secondary Means of Disconnecting)BESSBattery Storage System Electrical Disconnect(Primary Means of Disconnecting)Main Distribution Panel/Point of InterconnectionFull Facility Map1 System disconnect Drawing2
+Battery Storage System BreakerEQORE Computing UnitMain Distribution Panel
+Eversource Meter(Located inside Electrical Room,opposite wall from Main Distribution Panel)
+Building Main Disconnect
+Main Electrical Switchgear
+Revenue Meter: Revenue meter is located in mainelectric room.Revenue Meter: Honeywell Type A39SMSerial Number: 08105653Image included on Later Page
+Inverter
+Inside Building
+BESSCom.
+12Isolation Transformer4
+5
+2 x 6 Inch Conduit to EQORE System1-1/2 Inch Conduit to EQORE System1 Inch Conduit to 208/120V Sub Panel for EQORESystem power supply
+2
+Inverter SpecificationsModel NameDynapower CPS1250 Gen 5 OutdoorIP RatingNEMA3R/IP54Dimension (W x D x H)49 in x 43.3 in x 79.72 inWeightApprox. 2,205lbsMax. Operating VoltageRange697-1500DC Power (kW)813AC Line Voltage (V)480VACLine Frequency60HzMax AC Current (Derating)579 AmpsIsolation Transformer SpecificationsManufacturerMaddoxModel NumberMIT-DRY-184HV/HT480VLV/BT480Y/277VIP RatingNEMA 3RWeight2800lbs
+9
+DC In
+On EQORE BuiltConcrete Pad
+Howard Industries, 2808583614,Catalog Number: 9185-435488-017,Work Order: 36869
+Signed 11/06/2025
+
+
+===== PAGE 25 =====
+Sheet No.Drawn by:Checked by:Approved by:Date:Sheet
+Revision
+Scale
+REV.DATEDESCRIPTION
+SYSTEM INFORMATION
+ENGINEER OF RECORD
+CUSTOMER INFORMATION
+AHJEQORE PROJECT
+DESIGNER
+PAGE NOTES
+Century-TywoodHolliston, MATown of Holliston, MA
+Company: EQORE Inc.Address: 444 Somerville Ave,Somerville, MA, 02143Website: www.eqore.netPhone: 786-234-2655Contact: Donald Groh
+Name: Century-Tywood J3 CorpAddress: 79 Lowland St                Holliston, MA, 01747Website: www.century-tywood.com/Phone: (508)-422-8552Contact: Jack Mahoney
+11/03/2025DGDG A
+AC System Size: 380kW (InternallyDe-Rated from 1250kW)Inverter Model: Dynapower CPS1250DC System Size: 760kWhBESS: Gotion Edge 760
+As Noted
+Century Tywood - Line Diagram: Three Line
+ESS-13.1
+UtilityGrid
+1
+I
+11 Ø350
+8870(8370)2500(3000)
+200Ø 1000
+Transformer
+Existing Ground
+Existing Ground
+MainDisconnect
+EQOREComputing Unit
+Main Distribution Panel
+120V SupplyPowerCommunication
+480V Input forVoltage  Sensing
+3Battery SystemElectrical Disconnect
+Load
+CurrentSensor Input
+1
+6
+8
+11
+UtilityMeter 208/120VSubpanel7
+10
+Battery StorageSystem Breaker
+Interconnecting Pole: 54 - 6A
+Revenue Meter: Revenue meter is located in mainelectric room.Revenue Meter: Honeywell Type A39SMSerial Number: 08105653Image included on Later PageConduit ScheduleTag IDConduit SizeConductorNeutralGround1 2 x 6" EMT Conduit2 x 700MCM 75°C Rated Aluminum orEquivalent Ampacity Conductor Per Phase2 x 7000MCM 75°C RatedAluminum or Equivalent AmpacityConductor3/0 75°C Rated Aluminum orEquivalent Ampacity conductor2 2 x 6" PVC Conduit2 x 700MCM 75°C Rated Aluminum orEquivalent Ampacity Conductor Per Phase2 x 7000MCM 75°C RatedAluminum or Equivalent AmpacityConductor3/0 75°C Rated Aluminum orEquivalent Ampacity conductor3 2 x 4" EMT Conduit2 x 500MCM 75°C Rated Copper or EquivalentAmpacity Conductor Per Phase2 x 500MCM 75°C Rated Copper orEquivalent Ampacity Conductor3/0 75°C Rated Aluminum orEquivalent Ampacity conductor4 2 x 3" EMT Conduit2 x 500MCM 75°C Rated Copper or EquivalentAmpacity Conductor Per PhaseN/A3/0 75°C Rated Aluminum orEquivalent Ampacity conductor5 1 x 4" EMT Conduit1/0 DLO Southwire 44020, 2kV Heavy DutyFlexible Power Cable (HDFPC) DLO, Rated90°C Dry or Wet. 2kV Type RHH/RHW-2 orEquivalentN/A3/0 75°C Rated Aluminum orEquivalent Ampacity conductor6 1" Conduit or N/A if EQOREcomputing unit direct mount12 AWG Copper12 AWG Copper12 AWG Copper7 1" Conduit12 AWG Copper12 AWG Copper12 AWG Copper8 1" Conduit or N/A if EQOREcomputing unit direct mountPrebuilt Wiring HarnessN/A N/A9 1-1/2 Inch EMTCAT6 or Equivalent Data CableN/A N/A101-1/2 Inch PVCCAT6 or Equivalent Data CableN/A N/A111 Inch PVCCAT6 or Equivalent Data CableN/A N/A121 Inch PVCCAT6 or Equivalent Data CableN/A N/ABESS SpecificationsModel NameGotion Edge760Model NumberESD1267-05P760-GNominal Energy760kWhNominal Voltage1267.2VOperating Voltage Range1069.2V ~ 1425.6VIP RatingIP55Fire SuppressionAerosol + dry pipe sprinkler system + PACKimmersionDimension (W x D x H)55.1 in x 94.5 in x 98.4 inWeight~8 tons
+Battery System Electrical Disconnect SpecificationsTypeSingle Throw DisconnectWeather RatingNEMA 3RMax Amps600AMax Voltage600V AC
+Battery Storage System Breaker SpecificationsTypeMoldedBrandCutler-Hammer EatonModelHLD3600Max Amps600AMax Voltage600V ACPhase3AIC Ratings65kA@480V
+Inverter SpecificationsModel NameDynapower CPS1250 Gen 5 OutdoorIP RatingNEMA3R/IP54Dimension (W x D x H)49 in x 43.3 in x 79.72 inWeightApprox. 2,205lbsMax. Operating VoltageRange697-1500DC Power (kW)813AC Line Voltage (V)480VACLine Frequency60HzMax AC Current (Derating)579 Amps
+Isolation Transformer SpecificationsManufacturerMaddoxModel NumberMIT-DRY-184HV/HT480VLV/BT480Y/277VIP RatingNEMA 3RWeight2800lbs
+ACINPUT/OUTPUTCom.
+/var/folders/jv/z8dknhp97vd2jtchs661n4hw0000gn/T/TemporaryItems/NSIRD_screencaptureui_gOQmy1/Screenshot 2025-01-12 at 6.12.09 PM.png
+Dynapower CPS125
+Gotion Edge 760Com.
+12
+5 DC In/Out
+On EQORE BuiltConcrete Pad
+910
+Isolation Transformer
+DC In/Out
+2
+4
+Signed 11/06/2025
